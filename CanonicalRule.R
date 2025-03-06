@@ -1,5 +1,12 @@
 #' library
-
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(reshape2)
+library(ggsignif)
+library (mltools)
+library(ggh4x)
+# Filter for rows where V2 is 'stopgain'
 df.sub <- df[which(df$V2 == 'stopgain'), ]
 
 # Ensure factor ordering for categories
