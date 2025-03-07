@@ -1,0 +1,1120 @@
+#loading required libraries 
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+install.packages("BiocManager")
+BiocManager::install()
+source("http://bioconductor.org/biocLite.R")
+BiocManager::install(c("BSgenome.Hsapiens.UCSC.hg38"))
+
+BiocManager::install(c("RMariaDB"))
+
+BiocManager::install(c("GenomicFeatures"))
+BiocManager::install(c("VariantAnnotation"))
+
+library(GenomicFeatures)
+library(VariantAnnotation)
+library(BSgenome.Hsapiens.UCSC.hg38)
+genome <- BSgenome.Hsapiens.UCSC.hg38
+
+####
+
+
+#download.file("http://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_39/gencode.v39.primary_assembly.annotation.gtf.gz","gencode.v39.primary_assembly.annotation.gtf.gz")
+
+
+txdb = makeTxDbFromGFF('~/Downloads/gencode.v26.primary_assembly.annotation.gtf.gz')
+
+library(AnnotationDbi)
+saveDb(txdb, '~/Downloads/txdb.gencode26.sqlite')
+#loadDb('~/Downloads/txdb.gencode26.sqlite')
+ensgene <- txdb
+
+#saveDb(ensgene, file="fileName.sqlite")
+#ensgene <- loadDb("fileName.sqlite")
+chr.list <- paste('chr',1:22,sep='')
+ensgene.sub <- keepSeqlevels(ensgene,chr.list)
+ensgene <- ensgene.sub
+
+cds_seqs <- extractTranscriptSeqs(Hsapiens, cdsBy(ensgene, by="tx",use.names=TRUE))
+utr.grange <-threeUTRsByTranscript(ensgene, use.names=TRUE)
+fiveutr.grange<-fiveUTRsByTranscript(ensgene, use.names=TRUE)
+introns.grange<- intronsByTranscript(ensgene, use.names=TRUE)
+cds.grange<- cdsBy(ensgene, by="tx",use.names=TRUE)
+
+
+###get DNAstring of UTR seqs
+five_utr_seqs <- extractTranscriptSeqs(Hsapiens, utr.grange)
+three_utr_seqs <- extractTranscriptSeqs(Hsapiens, utr.grange)
+five_utr_seqs <- extractTranscriptSeqs(Hsapiens, fiveutr.grange)
+
+
+
+
+
+keys <- names(cds_seqs)
+cols <- columns(ensgene)
+all.df <- select(ensgene, keys = keys, columns = cols, keytype="TXNAME")
+## this has length of 304803 so most contain NAs or duplicates?
+##cds_seqs length is 28856
+all.df.sub <- all.df[which(all.df$TXNAME!='NA'),]
+###remove dulpicate entries?
+#all.df.sub <- all.df[unique(all.df$TXNAME),]
+#u.keys<-unique(names(cds_seqs))
+#u.all.df <- select(ccds, keys = keys, columns=cols,keytype="TXNAME")
+
+
+
+seqs_uORF <- function(seqs,x) {
+  print(x)
+  a <- unlist(seqs[x])
+  name <- names(seqs[x])
+  ind <- unlist(gregexpr('ATG',as.character(a)))
+  #augs.ind <- ind[which(ind%%3==1)]
+  ind.1 <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  #stop.ind <- ind.1[which(ind.1%%3==1)]
+  
+
+  if (length(ind)>0 & length(ind.1)>0 & any((ind.1-ind-3)%%3==0) & any(ind.1-ind>0)) {
+    paste('there is a utr_uORF')
+  } else 
+    paste('not any utr_uORF')
+
+}
+
+### for getting the content for every 10 bp
+
+get_GC_content <- function(seqs,x){
+  print(x)
+  a <- unlist(seqs[x])
+  
+  if (length(a)<10){
+    return(NA)
+  }
+  starts <- seq(1, length(a), by = 10)
+  n <- length(starts)    # Find the length of the vector "starts"
+  result<-c()
+  for (i in 1:n) {
+   chunk <- subseq(a, i, i+9)
+    content <- alphabetFrequency(chunk, baseOnly=TRUE, as.prob = TRUE)
+    GC<- content[3]+content[2]
+    result[i]<-(GC)
+}
+ return(result)
+  
+}
+
+
+get_AU_content <- function(seqs,x){
+  print(x)
+  a <- unlist(seqs[x])
+  
+  if (length(a)<10){
+    return(NA)
+  }
+  starts <- seq(1, length(a), by = 10)
+  n <- length(starts)    # Find the length of the vector "starts"
+  result<-c()
+  for (i in 1:n) {
+   chunk <- subseq(a, i, i+9)
+    content <- alphabetFrequency(chunk, baseOnly=TRUE, as.prob = TRUE)
+    AU<- content[1]+content[4]
+    result[i]<-(AU)
+}
+ return(result)
+  
+}
+
+get_UC_content <- function(seqs,x){
+  print(x)
+  a <- unlist(seqs[x])
+  
+  if (length(a)<10){
+    return(NA)
+  }
+  starts <- seq(1, length(a), by = 10)
+  n <- length(starts)    # Find the length of the vector "starts"
+  result<-c()
+  for (i in 1:n) {
+   chunk <- subseq(a, i, i+9)
+    content <- alphabetFrequency(chunk, baseOnly=TRUE, as.prob = TRUE)
+    UC<- content[4]+content[2]
+    result[i]<-(UC)
+}
+ return(result)
+  
+}
+
+
+### for the getting the content for every sequence
+
+get_GC_content <- function(seqs,x){
+  print(x)
+  a <- unlist(seqs[x])
+  content <- alphabetFrequency(a, baseOnly=TRUE, as.prob = TRUE)
+  GC<- content[3]+content[2]
+  
+  return(GC)
+  
+}
+
+get_AU_content <- function(seqs,x){
+  print(x)
+  a <- unlist(seqs[x])
+  content <- alphabetFrequency(a, baseOnly=TRUE, as.prob = TRUE)
+  AU<- content[1]+content[4]
+  #result[i]<-(AU)
+  return(AU)
+  
+}
+
+
+get_UC_content <- function(seqs,x){
+  print(x)
+  a <- unlist(seqs[x])
+  content <- alphabetFrequency(a, baseOnly=TRUE, as.prob = TRUE)
+  UC<- content[4]+content[2]
+  #result[i]<-(UC)
+  return(UC)
+  
+}
+
+
+
+
+
+
+
+library(parallel)
+fiveutrseqs.uORF <- mclapply(1:length(five_utr_seqs), function(x)
+{
+     print(x)
+     seqs_uORF(five_utr_seqs,x)
+
+},mc.cores=8)
+
+
+threeutrseqs.uORF <- mclapply(1:length(three_utr_seqs), function(x)
+{
+     print(x)
+     seqs_uORF(three_utr_seqs,x)
+
+},mc.cores=8)
+
+threeUTR_GC_content<- mclapply(1:length(three_utr_seqs), function(x)
+{
+     print(x)
+     get_GC_content(three_utr_seqs,x)
+
+},mc.cores=8)
+
+
+threeUTR_AU_content<- mclapply(1:length(three_utr_seqs), function(x)
+{
+     print(x)
+     get_AU_content(three_utr_seqs,x)
+
+},mc.cores=4)
+
+threeUTR_UC_content<- mclapply(1:length(three_utr_seqs), function(x)
+{
+     print(x)
+     get_UC_content(three_utr_seqs,x)
+
+},mc.cores=4)
+
+
+### for cdsseqs GC content
+
+cdsseqs_GC_content_10bp<- mclapply(1:length(cds_seqs), function(x)
+{
+     print(x)
+     get_GC_content(cds_seqs,x)
+
+},mc.cores=1)
+
+
+
+fiveUTR_GC_content_10bp<- mclapply(1:length(five_utr_seqs), function(x)
+{
+     print(x)
+     get_GC_content(five_utr_seqs,x)
+
+},mc.cores=2)
+
+fiveUTR_AU_content_10bp<- mclapply(1:length(five_utr_seqs), function(x)
+{
+     print(x)
+     get_AU_content(five_utr_seqs,x)
+
+},mc.cores=2)
+
+
+#### PTBP1 protein binding motif in 3'UTR elements (especially first 200-400 bp)
+#### Pyrimidine tracts in 3'UTR elements (especially first 200-400 bp)
+#### Cryptic introns in 3'UTRs of single-exon genes
+#### Localization signals in first 200 bp of transcripts (secreted vs. membrane proteins)
+
+
+
+###### let's do not do this
+
+#amount of windows with AC>=.8
+
+get_windows<- function(seqs,x){
+  
+  a<-seqs[[x]]
+  paste(length(a[a>=1]))
+}
+
+
+
+threeUTR_100_AU<- mclapply(1:length(three_utr_seqs), function(x)
+{
+     get_windows(threeUTR_AU_content,x)
+
+},mc.cores=1)
+
+
+threeUTR_100_GC<- mclapply(1:length(three_utr_seqs), function(x)
+{
+     get_windows(threeUTR_GC_content,x)
+
+},mc.cores=1)
+
+threeUTR_100_UC<- mclapply(1:length(three_utr_seqs), function(x)
+{
+     get_windows(threeUTR_UC_content,x)
+
+},mc.cores=1)
+
+cdsseqs_100_GC<- mclapply(1:length(cds_seqs), function(x)
+{
+     get_windows(cdsseqs_GC_content,x)
+
+},mc.cores=1)
+
+
+########################
+
+#######################
+
+
+
+get_AU_last200content <- function(x){
+  
+  print (x)
+  a <- unlist(three_utr_seqs[x])
+  
+  if (length(a)<200){
+    return(NA)}
+  
+  start<-length(a)-200+1
+  end<-length(a)
+  b<-subseq(a, start=start, end=end)
+  content <- alphabetFrequency(b, baseOnly=TRUE, as.prob = TRUE)
+  AU<-content[1]+content[4]
+  return(AU)
+  
+}
+get_GC_last200content <- function(x){
+    
+    print (x)
+    a <- unlist(three_utr_seqs[x])
+    
+    if (length(a)<200){
+        return(NA)}
+    
+    
+    start<-length(a)-200+1
+    end<-length(a)
+    b<-subseq(a, start=start, end=end)
+    content <- alphabetFrequency(b, baseOnly=TRUE, as.prob = TRUE)
+    AU<-content[3]+content[2]
+    return(AU)
+    
+}
+
+get_UC_last200content <- function(x){
+    
+    print (x)
+    a <- unlist(three_utr_seqs[x])
+    
+    if (length(a)<200){
+        return(NA)}
+   
+    
+    start<-length(a)-200+1
+    end<-length(a)
+    b<-subseq(a, start=start, end=end)
+    content <- alphabetFrequency(b, baseOnly=TRUE, as.prob = TRUE)
+    AU<-content[4]+content[2]
+    return(AU)
+    
+}
+
+
+get_AU_first200content <- function(x){
+    
+    print (x)
+    a <- unlist(three_utr_seqs[x])
+    
+    if (length(a)<200){
+        return(NA)}
+    
+    #start<-length(a)-200
+    #end<-length(a)
+    start <- 1
+    end <- 200
+    b<-subseq(a, start=start, end=end)
+    content <- alphabetFrequency(b, baseOnly=TRUE, as.prob = TRUE)
+    AU<-content[1]+content[4]
+    return(AU)
+    
+}
+
+get_GC_first200content <- function(x){
+    
+    print (x)
+    a <- unlist(three_utr_seqs[x])
+    
+    if (length(a)<200){
+        return(NA)}
+
+    #start<-length(a)-200
+    #end<-length(a)
+    start <- 1
+    end <- 200
+    b<-subseq(a, start=start, end=end)
+    content <- alphabetFrequency(b, baseOnly=TRUE, as.prob = TRUE)
+    AU<-content[3]+content[2]
+    return(AU)
+    
+}
+
+get_UC_first200content <- function(x){
+    
+    print (x)
+    a <- unlist(three_utr_seqs[x])
+    
+    if (length(a)<200){
+        return(NA)}
+  
+    #start<-length(a)-200
+    #end<-length(a)
+    start <- 1
+    end <- 200
+    b<-subseq(a, start=start, end=end)
+    content <- alphabetFrequency(b, baseOnly=TRUE, as.prob = TRUE)
+    AU<-content[4]+content[2]
+    return(AU)
+    
+}
+
+
+
+
+ThreeUTR_AUcontentlast200<- unlist(lapply(1:length(three_utr_seqs), get_AU_last200content))
+ThreeUTR_GCcontentlast200<- unlist(lapply(1:length(three_utr_seqs), get_GC_last200content))
+ThreeUTR_UCcontentlast200<- unlist(lapply(1:length(three_utr_seqs), get_UC_last200content))
+
+ThreeUTR_AUcontentfirst200<- unlist(lapply(1:length(three_utr_seqs), get_AU_first200content))
+ThreeUTR_GCcontentfirst200<- unlist(lapply(1:length(three_utr_seqs), get_GC_first200content))
+ThreeUTR_UCcontentfirst200<- unlist(lapply(1:length(three_utr_seqs), get_UC_first200content))
+
+
+
+
+
+
+#get_cds_length <- function(x){
+  #print(x)
+  #a <- unlist(cds_seqs[x])
+ #l <- length(a)
+  
+  #return(l)
+#}
+#cds_length<- mclapply(1:length(cds_seqs), get_cds_length,mc.cores=8)
+
+get_utr_length <- function(x){
+  
+  print(x)
+  a <- unlist(three_utr_seqs[x])
+  l <- length(a)
+  
+  return(l)
+}
+threeutr_length<- mclapply(1:length(three_utr_seqs), get_utr_length,mc.cores=8)
+
+##### do not do this
+get_motif <- function(x)
+{
+  print(x)
+  a <- unlist(three_utr_seqs[x])
+  ind <- unlist(gregexpr('TGT.TGT',as.character(a)))
+  if (ind==-1){
+    return(0)
+  }
+  count <- length(ind)
+ return(count)
+  
+}
+UGU_UGU<-mclapply(1:length(three_utr_seqs), get_motif,mc.cores=1)
+
+
+#######
+####number of exons
+cds_exons <- function(x)
+{
+  print(x)
+  name <- names(cds_seqs[x])
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  cds.df<-df[!is.na(df$CDSID),]
+  num.exons<-nrow(cds.df)
+  cds_exon_size<-(cds.df$CDSEND)-(cds.df$CDSSTART)+1
+  names(cds_exon_size)<-c(1:num.exons)
+  exons<-cumsum(cds_exon_size)
+  paste(exons, collapse=',')
+  
+}
+
+cds.exons<-mclapply(1:length(cds_seqs), cds_exons,mc.cores=8)
+
+
+cds_length <- function(x)
+{
+  print(x)
+  name <- names(cds_seqs[x])
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  cds.df<-df[!is.na(df$CDSID),]
+  cds_exon_size<-(cds.df$CDSEND)-(cds.df$CDSSTART)+1
+  s<-sum(cds_exon_size)
+  return(s)
+}
+
+cds.length<- mclapply(1:length(cds_seqs), cds_length,mc.cores=1)
+
+
+NC_length <- function(x)
+{
+  print(x)
+  name <- names(cds_seqs[x])
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  cds.df<-df[is.na(df$CDSID),]
+  cds_exon_size<-(cds.df$EXONEND)-(cds.df$EXONSTART)+1
+  s<-sum(cds_exon_size)
+  return(s)
+}
+noncoding.length<- mclapply(1:length(cds_seqs), NC_length,mc.cores=1)
+
+#hall.df <- select(refgene, keys = keys, columns=cols, keytype="TXNAME")
+## this has length of 304803 so most contain NAs or duplicates?
+##cds_seqs length is 28856
+all.df.sub <- all.df[which(all.df$TXNAME!='NA'),]
+
+exonnum <- function(x)
+{
+  print(x)
+  name <- names(cds_seqs[x])
+  df <- all.df[which(all.df$TXNAME==name),]
+  cds.df<-df[!is.na(df$CDSID),]
+  num.exons<-nrow(cds.df)
+  return(num.exons)
+}
+exon_count<-mclapply(1:length(cds_seqs), exonnum,mc.cores=8)
+
+NC_exons<- function(x){
+  print (x)
+  name <- names(cds_seqs[x])
+  df <- all.df[which(all.df$TXNAME==name),]
+  
+  NCcds.df<-df[is.na(df$CDSID),]
+  NCnum.exons<-nrow(NCcds.df)
+  return(NCnum.exons)
+  
+}
+NCexonsnum<-mclapply(1:length(cds_seqs), NC_exons,mc.cores=8)
+
+
+
+
+### what is the location of initiation alternative codons
+
+downstream_start <- function(x)
+{
+  print(x)
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('ATG',as.character(a)))
+  plus1.ind <- ind[which(ind%%3==1)]
+  if (length(plus1.ind)>0) {
+    startcodons <- plus1.ind
+    paste(plus1.ind,collapse = ",")
+  } else 
+    paste(NA)
+}
+
+downstream.start <- mclapply(1:length(cds_seqs), downstream_start,mc.cores=8)
+
+### if there is any intron in 3.utr
+
+hits <- unique(queryHits(findOverlaps(utr.grange,introns.grange)))
+txnames.3utr.introns <- names(utr.grange) [hits]
+
+
+### bring together all of the features together in a data frame
+
+
+
+
+five.utr.fr <- data.frame(txnames=names(five_utr_seqs),fiveutrseqs.uORF=unlist(fiveutrseqs.uORF))
+three.utr.fr <- data.frame(txnames=names(three_utr_seqs), threeUTR_AU_content=unlist(threeUTR_AU_content),threeUTR_GC_content=unlist(threeUTR_GC_content),threeUTR_UC_content=unlist(threeUTR_UC_content), threeUTR_length=unlist(threeutr_length),
+ThreeUTR_AUcontentlast200=ThreeUTR_AUcontentlast200,ThreeUTR_AUcontentfirst200=ThreeUTR_AUcontentfirst200,ThreeUTR_GCcontentfirst200=ThreeUTR_GCcontentfirst200,ThreeUTR_GCcontentlast200=ThreeUTR_AUcontentlast200,ThreeUTR_UCcontentfirst200=ThreeUTR_UCcontentfirst200,ThreeUTR_UCcontentlast200=ThreeUTR_UCcontentlast200)
+
+cds.seq.fr <- data.frame(txnames=names(cds_seqs),cds_exons=unlist(cds.exons),cds_length=unlist(cds.length),noncoding.length=unlist(noncoding.length),exon_count=unlist(exon_count),NCexonsnum=unlist(NCexonsnum), downstream_start=unlist(downstream.start))
+
+### first merge cds.seq.fr and three.utr.fr
+
+merged.1 <- merge(cds.seq.fr,three.utr.fr,all.x=TRUE,by='txnames')
+merged.2 <- merge(merged.1,five.utr.fr,all.x=TRUE,by='txnames')
+
+merged.2$threeUTR.introns <- rep('NA',nrow(merged.2))
+merged.2[which(merged.2$txnames%in%txnames.3utr.introns),'threeUTR.introns'] <- 'There is a 3UTR intron'
+
+
+
+### get the PTBP1 bindings sites in first 200-400 bp of 3'utr 
+
+utr.resized=resize(utr.grange,width=400,fix='start')
+### get the PTBP1 binding sites
+PTBP1.1 <- read.table('~/Desktop/NMDrevisioncode/ENCFF907HNN.bed.txt',sep='\t')
+PTBP1.2 <- read.table('~/Desktop/NMDrevisioncode/ENCFF130PWU.bed.txt',sep='\t')
+PTBP1.3 <- read.table('~/Desktop/NMDrevisioncode/ENCFF100OEX.bed.txt',sep='\t')
+
+
+PTBP1 <- rbind(PTBP1.1,PTBP1.2,PTBP1.3)
+
+
+gr2 <- GRanges(seqnames = PTBP1$V1, ranges = IRanges(start = PTBP1$V2, end=PTBP1$V3))
+
+hits <- unique(queryHits(findOverlaps(utr.resized,gr2)))
+txnames.3utr.PTBP1 <- names(utr.grange) [hits]
+merged.2$threeUTR.PTBP1 <- rep('NA',nrow(merged.2))
+merged.2[which(merged.2$txnames%in%txnames.3utr.PTBP1),'threeUTR.PTBP1'] <- 'There is a PTBP1 binding motif'
+
+### get the nuclear localization signal in the first 200 bp
+cds.resized=resize(cds.grange,width=200,fix='start')
+nucloc <- read.csv('~/Desktop/NMDrevisioncode/hg38-unipLocSignal.bed.csv',header=FALSE,sep='\t',stringsAsFactors=FALSE)
+#nucloc <- nucloc[which(nucloc$V22=='short sequence motif'),]
+gr2 <- GRanges(seqnames = nucloc$V1, ranges = IRanges(start = nucloc$V2, end=nucloc$V3))
+
+hits <- unique(queryHits(findOverlaps(cds.resized,gr2)))
+cds.nucloc <- names(cds.grange) [hits]
+merged.2$cds.nucloc <- rep('NA',nrow(merged.2))
+merged.2[which(merged.2$txnames%in%cds.nucloc),'cds.nucloc'] <- 'There is a nuclear localization signal in the first 200 bp'
+save(merged.2, file='~/Desktop/NMDrevisioncode/hg38_seqfeatures.RData')
+
+variants.features.fr$cds.nucloc <- rep('NA',nrow(variants.features.fr))
+
+variants.features.fr[which(variants.features.fr$txnames%in%cds.nucloc),'cds.nucloc'] <- 'There is a nuclear localization signal in the first 200 bp'
+
+
+##### motif discovery with memes
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("memes")
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("MotifDb")
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("plyranges")
+
+
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install("BSgenome.Hsapiens.UCSC.hg38")
+
+
+
+
+library(memes)
+library(plyranges)
+library (MotifDb)
+library (BSgenome.Hsapiens.UCSC.hg38)
+
+library(plyr)
+
+suppressPackageStartupMessages(library(GenomicRanges))
+suppressPackageStartupMessages(library(magrittr))
+suppressPackageStartupMessages(library(universalmotif))
+library(memes)
+
+data("example_chip_summits", package = "memes")
+
+
+
+dm.genome <- BSgenome.Dmelanogaster.UCSC.dm3::BSgenome.Dmelanogaster.UCSC.dm3
+
+genome <- BSgenome.Hsapiens.UCSC.hg38
+
+
+# Take fimo_results on the coding sequence
+fimo_results <- list()
+for(x in 1:length(PTC_utr_seq.range)){
+#for(x in 1:3){
+print(x)
+#summit_flank <- shift(PTC_utr_seq.range[[x]][1],-100) %>% plyranges::anchor_center() %>% plyranges::mutate(width = 100)
+
+
+### get the first 100 bp 
+
+
+bp=100
+
+
+
+
+range=PTC_utr_seq.range[[x]]
+
+widths=width(range)
+if(length(which(cumsum(width(range))>=bp)) >0 ) {
+
+ind <- min(which(cumsum(width(range))>=bp))
+
+if(ind>1)
+{
+   w.1 <- bp-cumsum(width(range))[ind-1]
+} else {
+   w.1 <- bp
+}
+
+
+if(as.character(runValue(strand(range)))=='+'){
+
+   #resized.range <- GRanges(seqnames(range), IRanges(start=df$POS[i],width=end(range)-df$POS[i]+1))
+   resized.range <- resize(range[ind], w.1,fix='start')
+
+} else {
+
+  #resized.range <- GRanges(seqnames(range), IRanges(start=start(range),width=df$POS[i]-start(range)+1))
+  resized.range <- resize(range[ind], w.1,fix='end')
+
+}
+
+range[ind] <- resized.range
+
+
+
+
+summit_flank <- range[1:ind]
+
+#summit_flank <- range %>% plyranges::anchor_start() %>% plyranges::mutate(width = 100)
+
+sequences <- summit_flank %>% get_sequence(genome)
+
+fimo_results.1 <- runFimo(sequences, 'memefile.txt')
+fimo_results[[x]] <- fimo_results.1
+
+}
+
+}
+  
+  
+  
+# Take fimo_results +- 100 bp arounD ptc
+fimo_results <- list()
+for(x in 1:length(PTC_utr_seq.range)){
+print(x)
+bp=200
+summit_flank <- shift(PTC_utr_seq.range[[x]][1],-100) %>% plyranges::anchor_start() %>% plyranges::mutate(width = bp)
+
+
+
+#summit_flank <- range %>% plyranges::anchor_start() %>% plyranges::mutate(width = 100)
+
+sequences <- summit_flank %>% get_sequence(genome)
+
+fimo_results.1 <- runFimo(sequences, 'memefile.txt')
+fimo_results[[x]] <- fimo_results.1
+
+}
+
+}
+  
+  
+  
+# Take fimo_results +- 100 bp arounD EJC
+fimo_results <- list()
+for(x in 1:length(PTC_utr_seq.range)){
+print(x)
+bp=100
+#summit_flank <- shift(PTC_utr_seq.range[[x]][1]) %>% plyranges::anchor_end() %>% plyranges::mutate(width = bp)
+summit_flank <- shift(PTC_utr_seq.range[[x]][1],100)
+
+summit_flank <- resize(summit_flank,fix='end',width=bp)
+
+
+
+#summit_flank <- range %>% plyranges::anchor_start() %>% plyranges::mutate(width = 100)
+
+sequences <- summit_flank %>% get_sequence(genome)
+
+fimo_results.1 <- runFimo(sequences, 'memefile.txt')
+fimo_results[[x]] <- fimo_results.1
+
+}
+
+}
+  
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##### do it until here
+
+
+
+ptc.exon<- function(x)
+{
+  print(x)
+  name <- names(cds_seqs[x])
+  d<-data[which(data$NAME==name),]
+  ds<-unlist(strsplit(as.character(d[4]),split= ","))
+  e<-min(which(as.numeric(ds) > as.numeric(d$minus1.boundary)))
+  paste(e)
+}
+
+plus1ptcexon<- mclapply(1:length(cds_seqs), ptc.exon,mc.cores=4)
+minus1ptcexon<- mclapply(1:length(cds_seqs),ptc.exon,mc.cores=4)
+
+
+
+get_finalPTC_minus1 <- function(x)
+  #get_NMD_ind_plus1(cds_seqs,all.df.sub$TXNAME)
+{
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  plus1.ind <- ind[which(ind%%3==2)]
+  finalPTC<-max(plus1.ind)
+  return(finalPTC)
+}
+
+minus1FinalPTC<- mclapply(1:length(cds_seqs), get_finalPTC_minus1,mc.cores=4)
+
+
+na. <- function (x) {
+  minus1FinalPTC[is.infinite(minus1FinalPTC)] <- NA
+  
+}
+
+minus1FinalPTC<-sapply(1:length(m$minus1FinalPTC), na.)
+
+
+
+
+
+
+
+
+
+get_NMD_subjected_ind_plus1 <- function(x)
+  
+{
+  
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  plus1.ind <- ind[which(ind%%3==2)]
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  exon.length <- (df$CDSEND-df$CDSSTART)+1
+  
+  aft.NMD.ind <- sum(exon.length[1:length(exon.length)-1])-50
+  ###this signifies the nucleotide(c.XX) that is the 50bp rule position
+  pre.plus1.ind.NMD <- which(plus1.ind <= aft.NMD.ind)
+  
+  if (length(pre.plus1.ind.NMD)>0) {
+    degraders<-plus1.ind[pre.plus1.ind.NMD]
+    paste(degraders,collapse = ",")
+  } else 
+    paste(NA)
+}
+
+get_NMD_escape_ind_plus1 <- function(x)
+  
+{
+  
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  plus1.ind <- ind[which(ind%%3==2)]
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  exon.length <- (df$CDSEND-df$CDSSTART)+1
+  
+  aft.NMD.ind <- sum(exon.length[1:length(exon.length)-1])-50
+  ###this signifies the nucleotide(c.XX) that is the 50bp rule position
+  post.plus1.ind.NMD<- which(plus1.ind >= aft.NMD.ind)
+  
+  if (length(post.plus1.ind.NMD)>0) {
+    escapers<-plus1.ind[post.plus1.ind.NMD]
+    paste(escapers,collapse = ",")
+  } else 
+    paste(NA)
+}   
+
+
+
+plus1subjectedPTCs<- mclapply(1:length(cds_seqs), get_NMD_subjected_ind_plus1,mc.cores=4)
+
+
+
+get_NMD_degrade_ind_minus1 <- function(x)
+  
+{
+  
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  minus1.ind <- ind[which(ind%%3==0)]
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  exon.length <- (df$CDSEND-df$CDSSTART)+1
+  
+  aft.NMD.ind <- sum(exon.length[1:length(exon.length)-1])-50
+  ###this signifies the nucleotide(c.XX) that is the 50bp rule position
+  pre.minus1.ind.NMD<- which(minus1.ind <= aft.NMD.ind)
+  
+  if (length(pre.minus1.ind.NMD)>0) {
+    degraders<-minus1.ind[pre.minus1.ind.NMD]
+    paste(degraders,collapse = ",")
+  } else 
+    paste(NA)
+}   
+
+get_NMD_escape_ind_minus1 <- function(x)
+  
+{
+  
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  minus1.ind <- ind[which(ind%%3==0)]
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  exon.length <- (df$CDSEND-df$CDSSTART)+1
+  
+  aft.NMD.ind <- sum(exon.length[1:length(exon.length)-1])-50
+  ###this signifies the nucleotide(c.XX) that is the 50bp rule position
+  post.minus1.ind.NMD<- which(minus1.ind >= aft.NMD.ind)
+  
+  if (length(post.plus1.ind.NMD)>0) {
+    escapers<-minus1.ind[post.minus1.ind.NMD]
+    paste(escapers,collapse = ",")
+  } else 
+    paste(NA)
+} 
+
+#plus1subjected<-sapply(strsplit(as.character(PTC_data.16$plus1subjectedPTCs),","),FUN=function(x)
+# {length(x[!is.na(x)])})
+
+
+
+
+
+get_NMD_subjected_total_plus1 <- function(x)
+  
+{
+  print(x)
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  plus1.ind <- ind[which(ind%%3==2)]
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  exon.length <- (df$CDSEND-df$CDSSTART)+1
+  
+  aft.NMD.ind <- sum(exon.length[1:length(exon.length)-1])-50
+  ###this signifies the nucleotide(c.XX) that is the 50bp rule position
+  pre.plus1.ind.NMD <- which(plus1.ind <= aft.NMD.ind)
+  
+  if (length(pre.plus1.ind.NMD)>0) {
+    degraders_total<-length(plus1.ind[pre.plus1.ind.NMD])
+    paste(degraders_total)
+  } else 
+    paste(0)
+}
+
+get_NMD_escape_total_plus1 <- function(x)
+  
+{
+  print(x)
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  plus1.ind <- ind[which(ind%%3==2)]
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  exon.length <- (df$CDSEND-df$CDSSTART)+1
+  
+  aft.NMD.ind <- sum(exon.length[1:length(exon.length)-1])-50
+  ###this signifies the nucleotide(c.XX) that is the 50bp rule position
+  post.plus1.ind.NMD<- which(plus1.ind >= aft.NMD.ind)
+  
+  if (length(post.plus1.ind.NMD)>0) {
+    escapers_total<-length(plus1.ind[post.plus1.ind.NMD])
+    paste(escapers_total)
+  } else 
+    paste(0)
+}   
+
+get_NMD_escape_total_minus1 <- function(x)
+  
+{
+  print(x)
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  minus1.ind <- ind[which(ind%%3==0)]
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  exon.length <- (df$CDSEND-df$CDSSTART)+1
+  
+  aft.NMD.ind <- sum(exon.length[1:length(exon.length)-1])-50
+  ###this signifies the nucleotide(c.XX) that is the 50bp rule position
+  post.minus1.ind.NMD<- which(minus1.ind >= aft.NMD.ind)
+  
+  if (length(post.minus1.ind.NMD)>0) {
+    escapers_total<-length(minus1.ind[post.minus1.ind.NMD])
+    paste(escapers_total)
+  } else 
+    paste(0)
+}   
+
+get_NMD_degrade_total_minus1 <- function(x)
+  
+{
+  
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  minus1.ind <- ind[which(ind%%3==0)]
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  exon.length <- (df$CDSEND-df$CDSSTART)+1
+  
+  aft.NMD.ind <- sum(exon.length[1:length(exon.length)-1])-50
+  ###this signifies the nucleotide(c.XX) that is the 50bp rule position
+  pre.minus1.ind.NMD<- which(minus1.ind <= aft.NMD.ind)
+  
+  if (length(pre.minus1.ind.NMD)>0) {
+    degraders_total<-length(minus1.ind[pre.minus1.ind.NMD])
+    paste(degraders_total)
+  } else 
+    paste(0)
+}   
+
+minus1degrade_total<- mclapply(1:length(cds_seqs),get_NMD_degrade_total_minus1,mc.cores=4)
+minus1escape_total<- mclapply(1:length(cds_seqs),get_NMD_escape_total_minus1,mc.cores=4)
+plus1degrade_total<- mclapply(1:length(cds_seqs),get_NMD_subjected_total_plus1,mc.cores=4)
+plus1escape_total<- mclapply(1:length(cds_seqs),get_NMD_escape_total_plus1,mc.cores=4)
+PTC_data_complete<-data.frame(PTC_data.18,minus1degrade_total,minus1escape_total)
+
+
+get_NSD_boundary_minus1 <- function(x)
+  #get_NMD_ind_plus1(cds_seqs,all.df.sub$TXNAME)
+{
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  plus1.ind <- ind[which(ind%%3==0)]
+  finalPTC<-max(plus1.ind)
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  cds.df<-df[!is.na(df$CDSID),]
+  exon.length <- (cds.df$CDSEND-cds.df$CDSSTART)+1
+  exon.number<-nrow(cds.df)
+  
+  aft.NMD.ind <- sum(exon.length[1:length(exon.length)-1])-50
+  ###this signifies the nucleotide(c.XX) that is the 50bp rule position
+  
+  
+  
+  escapingPTCs<-which(plus1.ind >= aft.NMD.ind)
+  pre.plus1.ind.NMD <- min(which(plus1.ind >= aft.NMD.ind))
+  plus1.ind.NMD <- pre.plus1.ind.NMD-1
+  
+  
+  if (exon.number == 1) {
+    return(finalPTC)
+  }  
+  else if (length(escapingPTCs)==0) {
+    max()
+    return('NSDonly_no_escapePTCs')
+  } 
+  else if (plus1.ind.NMD>0){
+    return(plus1.ind[plus1.ind.NMD])
+  }
+  else if (plus1.ind.NMD==0){
+    return(1)
+  }
+  else return('NO flaggable PTC')
+}
+
+minus1NSD<- mcapply(1:length(cds_seqs), get_NSD_boundary_minus1,mc.cores=4)
+
+get_NSD_boundary_plus1 <- function(x)
+  #get_NMD_ind_plus1(cds_seqs,all.df.sub$TXNAME)
+{
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('TAG|TAA|TGA',as.character(a)))
+  plus1.ind <- ind[which(ind%%3==2)]
+  finalPTC<-max(plus1.ind)
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  cds.df<-df[!is.na(df$CDSID),]
+  exon.length <- (cds.df$CDSEND-cds.df$CDSSTART)+1
+  exon.number<-nrow(cds.df)
+  
+  aft.NMD.ind <- sum(exon.length[1:length(exon.length)-1])-50
+  ###this signifies the nucleotide(c.XX) that is the 50bp rule position
+  
+  
+  
+  escapingPTCs<-which(plus1.ind >= aft.NMD.ind)
+  pre.plus1.ind.NMD <- min(which(plus1.ind >= aft.NMD.ind))
+  plus1.ind.NMD <- pre.plus1.ind.NMD-1
+  
+  
+  if (exon.number == 1) {
+    return('single_exon_gene')
+  }  
+  else if (length(escapingPTCs)==0) {
+    return('NSDonly_no_escapePTCs')
+  } 
+  else if (plus1.ind.NMD>0){
+    return('NMD-competent')
+  }
+  else if (plus1.ind.NMD==0){
+    return('NSDonly_PTC_at_start')
+  }
+  else return('NO flaggable PTC')
+}
+
+plus1NSD<- mclapply(1:length(cds_seqs), get_NSD_boundary_plus1,mc.cores=4)
+
+
