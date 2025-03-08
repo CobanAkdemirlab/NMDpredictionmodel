@@ -432,6 +432,124 @@ get_utr_length <- function(x){
 threeutr_length<- mclapply(1:length(three_utr_seqs), get_utr_length,mc.cores=8)
 
 
+####number of exons
+cds_exons <- function(x)
+{
+  print(x)
+  name <- names(cds_seqs[x])
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  cds.df<-df[!is.na(df$CDSID),]
+  num.exons<-nrow(cds.df)
+  cds_exon_size<-(cds.df$CDSEND)-(cds.df$CDSSTART)+1
+  names(cds_exon_size)<-c(1:num.exons)
+  exons<-cumsum(cds_exon_size)
+  paste(exons, collapse=',')
+  
+}
+
+cds.exons<-mclapply(1:length(cds_seqs), cds_exons,mc.cores=8)
+
+
+cds_length <- function(x)
+{
+  print(x)
+  name <- names(cds_seqs[x])
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  cds.df<-df[!is.na(df$CDSID),]
+  cds_exon_size<-(cds.df$CDSEND)-(cds.df$CDSSTART)+1
+  s<-sum(cds_exon_size)
+  return(s)
+}
+
+cds.length<- mclapply(1:length(cds_seqs), cds_length,mc.cores=1)
+
+
+NC_length <- function(x)
+{
+  print(x)
+  name <- names(cds_seqs[x])
+  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
+  cds.df<-df[is.na(df$CDSID),]
+  cds_exon_size<-(cds.df$EXONEND)-(cds.df$EXONSTART)+1
+  s<-sum(cds_exon_size)
+  return(s)
+}
+noncoding.length<- mclapply(1:length(cds_seqs), NC_length,mc.cores=1)
+
+#hall.df <- select(refgene, keys = keys, columns=cols, keytype="TXNAME")
+## this has length of 304803 so most contain NAs or duplicates?
+##cds_seqs length is 28856
+all.df.sub <- all.df[which(all.df$TXNAME!='NA'),]
+
+exonnum <- function(x)
+{
+  print(x)
+  name <- names(cds_seqs[x])
+  df <- all.df[which(all.df$TXNAME==name),]
+  cds.df<-df[!is.na(df$CDSID),]
+  num.exons<-nrow(cds.df)
+  return(num.exons)
+}
+exon_count<-mclapply(1:length(cds_seqs), exonnum,mc.cores=8)
+
+NC_exons<- function(x){
+  print (x)
+  name <- names(cds_seqs[x])
+  df <- all.df[which(all.df$TXNAME==name),]
+  
+  NCcds.df<-df[is.na(df$CDSID),]
+  NCnum.exons<-nrow(NCcds.df)
+  return(NCnum.exons)
+  
+}
+NCexonsnum<-mclapply(1:length(cds_seqs), NC_exons,mc.cores=8)
+
+
+
+
+### what is the location of initiation alternative codons
+
+downstream_start <- function(x)
+{
+  print(x)
+  a <- unlist(cds_seqs[x])
+  name <- names(cds_seqs[x])
+  ind <- unlist(gregexpr('ATG',as.character(a)))
+  plus1.ind <- ind[which(ind%%3==1)]
+  if (length(plus1.ind)>0) {
+    startcodons <- plus1.ind
+    paste(plus1.ind,collapse = ",")
+  } else 
+    paste(NA)
+}
+
+downstream.start <- mclapply(1:length(cds_seqs), downstream_start,mc.cores=8)
+
+### if there is any intron in 3.utr
+
+hits <- unique(queryHits(findOverlaps(utr.grange,introns.grange)))
+txnames.3utr.introns <- names(utr.grange) [hits]
+
+
+### bring together all of the features together in a data frame
+
+
+
+
+five.utr.fr <- data.frame(txnames=names(five_utr_seqs),fiveutrseqs.uORF=unlist(fiveutrseqs.uORF))
+three.utr.fr <- data.frame(txnames=names(three_utr_seqs), threeUTR_AU_content=unlist(threeUTR_AU_content),threeUTR_GC_content=unlist(threeUTR_GC_content),threeUTR_UC_content=unlist(threeUTR_UC_content), threeUTR_length=unlist(threeutr_length),
+ThreeUTR_AUcontentlast200=ThreeUTR_AUcontentlast200,ThreeUTR_AUcontentfirst200=ThreeUTR_AUcontentfirst200,ThreeUTR_GCcontentfirst200=ThreeUTR_GCcontentfirst200,ThreeUTR_GCcontentlast200=ThreeUTR_AUcontentlast200,ThreeUTR_UCcontentfirst200=ThreeUTR_UCcontentfirst200,ThreeUTR_UCcontentlast200=ThreeUTR_UCcontentlast200)
+
+cds.seq.fr <- data.frame(txnames=names(cds_seqs),cds_exons=unlist(cds.exons),cds_length=unlist(cds.length),noncoding.length=unlist(noncoding.length),exon_count=unlist(exon_count),NCexonsnum=unlist(NCexonsnum), downstream_start=unlist(downstream.start))
+
+### first merge cds.seq.fr and three.utr.fr
+
+merged.1 <- merge(cds.seq.fr,three.utr.fr,all.x=TRUE,by='txnames')
+merged.2 <- merge(merged.1,five.utr.fr,all.x=TRUE,by='txnames')
+
+merged.2$threeUTR.introns <- rep('NA',nrow(merged.2))
+merged.2[which(merged.2$txnames%in%txnames.3utr.introns),'threeUTR.introns'] <- 'There is a 3UTR intron'
+
 
 
 
