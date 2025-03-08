@@ -1,6 +1,12 @@
+#necessary libraries
+library(ggsignif)
+library (mltools)
+library(ggh4x)
+library(RColorBrewer)
+
+
 # List of features with their binning details
 features_list <- list(
-  list(feature = "canonical_rule", label = "Canonical Rule", breaks = c(0, 1), labels = c("Yes", "No"), reference = "Yes"),
   list(feature = "first_200bp", label = "First 200bp", breaks = c(0, 1), labels = c("No", "Yes"), reference = "No"),
   list(feature = "PTC_2_start", label = "PTC.2 Start", breaks = c(0, 100, 200, 300, 400), labels = c("0-100", "100-200", "200-300", "300-400"), reference = "0-100"),
   list(feature = "UTR3_length", label = "3'UTR Length", breaks = c(0, 10, 14), labels = c("0-10", "10-14"), reference = "0-10"),
@@ -17,9 +23,7 @@ facet_vars <- c("last.EJC", "pLI.cat", "Freq.cat")
 # Loop through each feature and create the plots
 for (feature_info in features_list) {
   for (facet_var in facet_vars) {
-    # Skip facet_vars for canonical_rule (only one plot needed)
-    if (feature_info$feature == "canonical_rule" && facet_var != "last.EJC") next
-    
+
     # Generate plot
     bp <- plot_NMD_efficiency(
       df = df.sub,
