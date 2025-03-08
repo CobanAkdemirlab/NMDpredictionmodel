@@ -2,8 +2,7 @@
 library(ggplot2)
 library(dplyr)
 library(ggsignif)
-library (mltools)
-library(ggh4x)
+
 
 plot_NMD_efficiency <- function(df, category_column, y_var = "ALLELE.RAT",
                                 title = "NMD Efficiency Plot", 
@@ -69,3 +68,36 @@ plot_NMD_efficiency <- function(df, category_column, y_var = "ALLELE.RAT",
   
   return(bp)
 }
+
+
+library(ggplot2)
+library(dplyr)
+source("scripts/plotting_functions.R") # Load function
+
+# Load dataset
+df <- read.csv("data/example_data.csv")
+
+# Example 1: Plot for 'last.EJC'
+bp1 <- plot_NMD_efficiency(
+  df = df[which(df$V2 == 'stopgain'), ], 
+  category_column = "last.EJC",
+  title = "Canonical Rule",
+  colors = c("upstream" = "red", "penultimate.last50bp" = "darkgrey", "last.exon" = "darkgrey"),
+  signif_comparisons = list(c("penultimate.last50bp", "last.exon"), 
+                            c("upstream", "last.exon"), 
+                            c("penultimate.last50bp", "upstream")),
+  y_positions = c(0.8, 0.9, 1.0)
+)
+print(bp1)
+
+# Example 2: Plot for 'Freq.cat'
+bp2 <- plot_NMD_efficiency(
+  df = df[which(df$V2 == 'stopgain'), ], 
+  category_column = "Freq.cat",
+  title = "NMD Efficiency vs Frequency Categories",
+  colors = c("Ultra-rare variants" = "grey", "Rare/Common variants" = "red"),
+  signif_comparisons = list(c("Ultra-rare variants", "Rare/Common variants")),
+  y_positions = c(1.0)
+)
+print(bp2)
+
