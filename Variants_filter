@@ -1,0 +1,57 @@
+##remove single exon  
+
+df <- df[-which(df$exon_count==1),]
+
+
+
+#### remove the low expression genes in whole blood
+exp <- read.table('~/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt',header=TRUE,sep='\t')
+
+exp$Gene.name <- sapply(1:nrow(exp),function(x)
+{
+  strsplit(exp$Name[x],'\\.')[[1]][1]
+  
+})
+rem.genes <- exp[which(exp$Whole.Blood<=1),'Description']
+rem.ind <- which(df$GENE_ID%in%rem.genes)
+
+df <- df[-rem.ind,]
+length(rem.ind)
+
+#### remove the egenes
+whlbld.egenes <- read.table('~/Whole_Blood.v8.egenes.txt',sep='\t',header=TRUE)
+
+whlbld.egenes <- whlbld.egenes[which(whlbld.egenes$qval <= 0.05),]
+whlbld.egenes$Gene.name <- sapply(1:nrow(whlbld.egenes ),function(x)
+{
+  strsplit(whlbld.egenes$gene_id[x],'\\.')[[1]][1]
+  
+})
+
+
+sub.ind <- which(whlbld.egenes$gene_name%in%df$GENE_ID)
+
+whlbld.egenes.sub <- whlbld.egenes[sub.ind,]
+
+save(whlbld.egenes.sub,file='whlbld.egenes.sub.RData')
+
+rem.eqtls <- sapply(1:nrow(whlbld.egenes.sub), function(x){
+  
+  
+  gsub('_b38','',whlbld.egenes.sub$variant_id[x])
+
+})
+
+df <- df[-which(df$variantID%in%rem.eqtls),]
+
+
+
+
+#### remove the imprinted genes 
+
+imprintedgenes <- c('UTS2','PPIEL','INPP5F_V2','H19','IGF2','KCNQ1','LPAR6','MEG3','RP11-7F17.7','SNRPN','SNHG14','SNURF','UBE3A','ZNF597','ZNF331','L3MBTL1','NAP1L5','FAM50B','PLAGL1','GRB10','MEST')
+imp.rem.ind <- df[which(df$Gene_ID%in%imprintedgenes),]
+
+imp.rem.ind <- which(df$Gene_ID %in% imprintedgenes)
+noimpdf <- df[-imp.rem.ind, ]
+
