@@ -1,0 +1,362 @@
+
+variants.features.fr$coding.pos <-  sapply(1:nrow(variants.features.fr),function(x)
+  
+{
+  print(x)
+  ens.annotated <- variants.features.fr$V3[x]
+  pos <- strsplit(ens.annotated,':')
+  cod.pos <- pos[[1]][grep(variants.features.fr$txnames[x],pos[[1]])+2]
+  if(length(grep('c.',cod.pos))==1) {
+    if (length(grep('_',cod.pos))==1) {
+      cod.pos <- strsplit(cod.pos,'_')[[1]][1]
+      as.numeric(gsub("\\D", "", cod.pos))
+    } else {
+      
+      as.numeric(gsub("\\D", "", cod.pos))
+    }
+  } else 
+  {
+    'NA'
+    
+  }
+  
+  
+  
+})
+
+variants.features.fr$mut.exon <-  sapply(1:nrow(variants.features.fr),function(x) {
+  
+  print(x)
+  
+  if(!is.na(variants.features.fr$coding.pos[x]) & !is.na(variants.features.fr$cds_exons[x]) & !(variants.features.fr$coding.pos[x]=='NA') ){
+    exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]),',')))
+    if (variants.features.fr$coding.pos[x] <= exon.cor[1]) {
+      return (1)
+      
+    } else {
+      
+      if (length(exon.cor)>=2){
+        
+        for (i in 2:length(exon.cor)){
+          
+          if (variants.features.fr$coding.pos[x] >= exon.cor[i-1] & variants.features.fr$coding.pos[x] <= exon.cor[i]) {
+            
+            return (i)
+            
+          }
+        }
+        
+      }
+    } 
+  } else {
+    
+    'NA'
+  } 
+  
+  
+  
+})
+
+
+variants.features.fr$GENE_ID <-  sapply(1:nrow(variants.features.fr),function(x)
+  
+{
+  
+  ens.annotated <- variants.features.fr$V3[x]
+  pos <- strsplit(ens.annotated,':')
+  gene <- pos[[1]][1]
+  
+})
+
+### mutated exon
+
+variants.features.fr$length.mutated.exon<-  sapply(1:nrow(variants.features.fr),function(x)
+{
+  print(x)
+  
+  if(!is.na(variants.features.fr$cds_exons[x]) & !variants.features.fr$mut.exon[x]=='NA' & !is.null(variants.features.fr$mut.exon[x][[1]])){
+    exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]),',')))
+    mut.exon <- variants.features.fr$mut.exon[x]
+    if(mut.exon[[1]] >=2){
+      length.exon=exon.cor[mut.exon[[1]]]-exon.cor[mut.exon[[1]]-1]
+    }
+    else {
+      
+      length.exon=exon.cor[mut.exon[[1]]]
+    }
+  }
+  else {
+    
+    'NA'
+    
+  }
+  
+  
+})
+
+
+
+
+
+
+
+
+### first 200 bp
+
+variants.features.fr$first.200<-  sapply(1:nrow(variants.features.fr),function(x)
+  
+{
+  if(as.numeric(variants.features.fr$coding.pos[x])<=200){
+    paste('first 200')
+  } else {
+    paste('not first 200')
+    
+  }
+  
+  
+})
+
+#### long exon 
+
+variants.features.fr$long.exon<-  sapply(1:nrow(variants.features.fr),function(x)
+  
+{
+  print(x)
+  
+  if(!is.na(variants.features.fr$cds_exons[x]) & !variants.features.fr$mut.exon[x]=='NA' & !is.null(variants.features.fr$mut.exon[x][[1]])){
+    exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]),',')))
+    mut.exon <- variants.features.fr$mut.exon[x]
+    if(mut.exon[[1]] >=2){
+      length.exon=exon.cor[mut.exon[[1]]]-exon.cor[mut.exon[[1]]-1]
+      if(length.exon>=400){
+        paste('long.exon')
+      } else {
+        paste('not long.exon')
+        
+      }
+    } else {
+      
+      length.exon=exon.cor[mut.exon[[1]]]
+      if(length.exon>=400){
+        paste('long.exon')
+      } else {
+        paste('not long.exon')
+        
+      }
+      
+      
+    }
+  }
+  
+})
+
+
+
+### PT2 to EJC distance
+
+variants.features.fr$PTC.2.EJC<-  sapply(1:nrow(variants.features.fr),function(x)
+  
+{
+  print(x)
+  
+  if(!is.na(variants.features.fr$cds_exons[x]) & !variants.features.fr$mut.exon[x]=='NA' & !is.null(variants.features.fr$mut.exon[x][[1]])) {
+    exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]),',')))
+    mut.exon <- variants.features.fr$mut.exon[x]
+    if(mut.exon[[1]] >=2){
+      length.exon=exon.cor[mut.exon[[1]]]-as.numeric(variants.features.fr$coding.pos[x])
+      
+    }
+    else {
+      
+      length.exon=exon.cor[mut.exon[[1]]]-as.numeric(variants.features.fr$coding.pos[x])
+      
+      
+    }
+  }
+  
+})
+
+
+
+
+### PTC.2.end
+variants.features.fr$PTC.2.end <-  sapply(1:nrow(variants.features.fr),function(x)
+  
+{
+  variants.features.fr$cds_length.x[x]-as.numeric(variants.features.fr$coding.pos[x])
+  
+})
+
+### PTC.2.start
+
+variants.features.fr$PTC.2.start <-  sapply(1:nrow(variants.features.fr),function(x)
+  
+{
+  as.numeric(variants.features.fr$coding.pos[x])
+  
+})
+
+### last exon rule
+
+variants.features.fr$last.exon <-  sapply(1:nrow(variants.features.fr),function(x)
+  
+{
+  print(x)
+  if(!is.na(variants.features.fr$cds_exons[x])& !variants.features.fr$mut.exon[x]=='NA' & !is.null(variants.features.fr$mut.exon[x][[1]])){
+    if(variants.features.fr$exon_count[x]=='1') {
+      
+      paste('NA')
+    } else if (variants.features.fr$exon_count[x]==variants.features.fr$mut.exon[x]) {
+      
+      paste('lastexon')
+    }
+    else {
+      
+      paste('notlastexon')
+    }
+    
+    
+    
+  }
+  
+  
+})
+
+### penultimate exon rule
+
+variants.features.fr$penultimate.exon <-  sapply(1:nrow(variants.features.fr),function(x)
+  
+{
+  
+  print(x)
+  if(!is.na(variants.features.fr$cds_exons[x]) & !variants.features.fr$mut.exon[x]=='NA' & !is.null(variants.features.fr$mut.exon[x][[1]])) {
+    if(as.numeric(variants.features.fr$exon_count[x])==1) {
+      
+      paste('not penultimate.last50bp')
+    } else if ( as.numeric(variants.features.fr$exon_count[x])>1 & as.numeric(variants.features.fr$exon_count[x])==variants.features.fr$mut.exon[x][[1]]+1) {
+      
+      exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]),',')))
+      if(length (exon.cor)>=2){
+        fifty.pos <- exon.cor[length(exon.cor)-1]-50
+        penultimate.exon.length <- exon.cor[length(exon.cor)-1]-exon.cor[length(exon.cor)-2]
+      }
+      if(length (exon.cor)==2){
+        fifty.pos <- exon.cor[length(exon.cor)-1]-50
+        penultimate.exon.length <- exon.cor[1]
+      }
+      if (as.numeric(variants.features.fr$coding.pos[x])>=fifty.pos & as.numeric(variants.features.fr$coding.pos[x])<=exon.cor[length(exon.cor)-1] & penultimate.exon.length>=50 ){
+        paste('penultimate.last50bp')
+        
+      } else {
+        paste('not penultimate.last50bp')
+        
+      }
+      
+    } else {
+      
+      paste('not penultimate.last50bp')
+      
+    }
+    
+  } else {
+    
+    paste('not penultimate.last50bp')
+  }
+  
+  
+})
+
+
+
+####Full penultimate exon
+
+variants.features.fr$penult.exon <- sapply(1:nrow(variants.features.fr), function(x) {
+  
+  print(x)
+  
+  if (!is.na(variants.features.fr$cds_exons[x]) &  
+      !variants.features.fr$mut.exon[x] == 'NA' &  
+      !is.null(variants.features.fr$mut.exon[x][[1]])) {
+    
+    exon_count <- as.numeric(variants.features.fr$exon_count[x])
+    mut_exon <- as.numeric(variants.features.fr$mut.exon[x][[1]])
+    
+    # If only 1 exon, there's no penultimate exon
+    if (exon_count == 1) {
+      return("not penultimate.exon")
+      
+      # If exactly 2 exons, the first exon is the penultimate exon
+    } else if (exon_count == 2 & mut_exon == 1) {
+      return("penultimate.exon")
+      
+      # If more than 2 exons and mutation is in the second-to-last exon
+    } else if (exon_count > 2 & mut_exon == exon_count - 1) {
+      
+      exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]), ',')))
+      
+      if (length(exon.cor) >= 2) {
+        penultimate_exon_start <- exon.cor[length(exon.cor) - 2]  # Start of penultimate exon
+        penultimate_exon_end <- exon.cor[length(exon.cor) - 1]    # End of penultimate exon
+      }
+      
+      # If the variant is inside the full penultimate exon, mark it
+      if (as.numeric(variants.features.fr$coding.pos[x]) >= penultimate_exon_start &  
+          as.numeric(variants.features.fr$coding.pos[x]) <= penultimate_exon_end) {
+        return("penultimate.exon")
+      } else {
+        return("not penultimate.exon")
+      }
+      
+    } else {
+      return("not penultimate.exon")
+    }
+    
+  } else {
+    return("not penultimate.exon")
+  }
+})
+
+########
+###  get the unique variants look at the distinguishing features
+
+variants.features.fr$ALLELE.RAT<- 1-variants.features.fr$altCount/variants.features.fr$totalCount
+variants.features.fr$NMD.ESCAPEE <- rep('NA',nrow(variants.features.fr))
+esc.ind <- which(variants.features.fr$ALLELE.RAT<=0.65 & variants.features.fr$ALLELE.RAT>=0.35)
+nonesc.ind <-  which(variants.features.fr$ALLELE.RAT>0.65)
+variants.features.fr[esc.ind,'NMD.ESCAPEE'] <- 'TRUE'
+variants.features.fr[nonesc.ind,'NMD.ESCAPEE'] <- 'FALSE'
+
+#### get the distinct variants 
+### not to count any variant more than once 
+
+tissue.var <- variants.features.fr
+uni.var <- unique(tissue.var$key)
+
+freq.fr <- data.frame(table(tissue.var$key))
+
+sub.ind <- NULL
+for (x in 1:length(uni.var))
+{
+  
+  var <- uni.var[x]
+  ind <- which(tissue.var$key==var)
+  ind.1 <- sample(length(ind),1)
+  ind.2 <- ind[ind.1]
+  sub <- tissue.var[ind,]
+
+  
+  sub.ind <- c(sub.ind,ind.2)
+}
+
+tissue.var.sub <- tissue.var[sub.ind,]
+
+df <- tissue.var.sub
+
+freq.fr$key <- freq.fr$Var1
+
+df <- merge(df,freq.fr,by='key')
+
+
+
+
+
