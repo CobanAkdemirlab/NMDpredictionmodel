@@ -1,0 +1,235 @@
+
+# Convert 'first.200' values and filter out 'NA' values
+df.sub$first.200[which(df.sub$first.200 == 'first 200')] <- 'Yes'
+df.sub$first.200[which(df.sub$first.200 == 'not first 200')] <- 'No'
+df.sub <- df.sub[!is.na(df.sub$first.200), ]  # Remove NA values
+
+# Sort by 'first.200' and assign to 'cat.labels'
+df.sub <- df.sub[order(df.sub$first.200, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$first.200
+
+# Filter indices without NA in 'cat.labels'
+ind <- which(!is.na(df.sub$cat.labels))
+
+# Calculate the sample size for each category and last.EJC facet combination
+count_data <- df.sub %>%
+  group_by(cat.labels, last.EJC) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# Load the required library
+library(wesanderson)
+
+# Create the boxplot with sample size and flipped coordinates
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes" = "red", "No" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD efficiency vs. first 200 bp") +
+  xlab("First 200 bp") +
+  ylab("NMD efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = unique(df.sub$cat.labels[ind])[1:2]) +
+  coord_flip() +  # Flipped coordinates
+  facet_nested(~last.EJC) + 
+  # Add sample size as text labels above each boxplot
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5)
+
+# Extract labels for comparisons
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+# Add significance comparisons
+bp <- bp + geom_signif(
+  comparisons = list(c(labels[1], labels[2])),
+  map_signif_level = TRUE,
+  textsize = 4,
+  y_position = c(0.9)
+)
+
+# Print the plot
+print(bp)
+
+############################ by groups by pli #############################
+# Filter the data based on conditions
+df.sub_pli <- df %>%
+  filter(V2 == 'stopgain', !is.na(first.200), 
+         pLI.cat %in% c('highly tolerant (pLI<0.35)', 'medium tolerant (0.35=<pLI<0.65)', 'highly intolerant (pLI>=0.65)'))
+
+# Convert 'first.200' values to 'Yes' or 'No'
+df.sub_pli$first.200[df.sub_pli$first.200 == 'first 200'] <- 'Yes'
+df.sub_pli$first.200[df.sub_pli$first.200 == 'not first 200'] <- 'No'
+
+# Remove any rows with NA in first.200 or pLI.cat to avoid plotting NA categories
+df.sub_pli <- df.sub_pli %>%
+  filter(first.200 != 'NA', pLI.cat != 'NA')
+
+# Calculate sample sizes for each combination of 'first.200' and 'pLI.cat'
+count_data_pli <- df.sub_pli %>%
+  group_by(first.200, pLI.cat) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# Perform pairwise Wilcoxon tests for each pLI category
+significance_results <- df.sub_pli %>%
+  group_by(pLI.cat) %>%
+  summarise(
+    p_value = wilcox.test(ALLELE.RAT[first.200 == 'Yes'], ALLELE.RAT[first.200 == 'No'], exact = FALSE)$p.value
+  )
+
+# Print the significance results for debugging
+print("Significance results:")
+print(significance_results)
+
+# Create a mapping for dynamic y-positions and annotations
+significance_results <- significance_results %>%
+  mutate(
+    annotation = ifelse(p_value < 0.001, "***",
+                        ifelse(p_value < 0.01, "**",
+                               ifelse(p_value < 0.05, "*", "NS"))),
+    y_position = c(0.9, 1.0, 1.1)  # Adjust y-positions dynamically
+  )
+
+# Create the boxplot
+# Adjust sample size text placement
+bp_pli <- df.sub_pli %>%
+  ggplot(aes(x = first.200, y = ALLELE.RAT, fill = pLI.cat)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("highly tolerant (pLI<0.35)" = "red",
+                               "medium tolerant (0.35=<pLI<0.65)" = "darkgrey",
+                               "highly intolerant (pLI>=0.65)" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 14, face = "bold"),
+    text = element_text(size = 10),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. First 200 bp") +
+  xlab("First 200 bp") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.2) +  # Increased ylim to allow space for annotations
+  coord_flip() +
+  facet_nested(. ~ pLI.cat) +  # Facet by exon position across the top
+  # Add sample size as text labels above each boxplot
+  geom_text(data = count_data_pli, aes(
+    x = first.200,
+    y = ifelse(pLI.cat == "highly tolerant (pLI<0.35)", 1.05, 1.1),  # Adjust for middle category
+    label = count
+  ),
+  size = 4, position = position_dodge(width = 0.25), vjust = -0.5)
+
+# Add significance annotations dynamically
+for (i in 1:nrow(significance_results)) {
+  pLI_category <- significance_results$pLI.cat[i]
+  annotation <- significance_results$annotation[i]
+  y_pos <- significance_results$y_position[i]
+  
+  bp_pli <- bp_pli + geom_signif(
+    comparisons = list(c("Yes", "No")),
+    map_signif_level = TRUE,
+    annotations = annotation,
+    textsize = 4,
+    y_position = y_pos,
+    data = df.sub_pli %>% filter(pLI.cat == pLI_category)
+  )
+}
+
+# Print the plot
+print(bp_pli)
+
+##################################################by freq category ###############
+# Filter the data based on conditions for frequency variants
+df.sub_freq <- df %>%
+  filter(V2 == 'stopgain', !is.na(first.200), 
+         Freq.cat %in% c('Ultra-rare variants', 'Rare/Common variants'))
+
+# Convert 'first.200' values to 'Yes' or 'No'
+df.sub_freq$first.200[df.sub_freq$first.200 == 'first 200'] <- 'Yes'
+df.sub_freq$first.200[df.sub_freq$first.200 == 'not first 200'] <- 'No'
+
+# Remove any rows with NA in first.200 or Freq.cat to avoid plotting NA categories
+df.sub_freq <- df.sub_freq %>%
+  filter(first.200 != 'NA', Freq.cat != 'NA')
+
+# Calculate sample sizes for each combination of 'first.200' and 'Freq.cat'
+count_data_freq <- df.sub_freq %>%
+  group_by(first.200, Freq.cat) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# Perform pairwise Wilcoxon tests for each frequency category
+significance_results_freq <- df.sub_freq %>%
+  group_by(Freq.cat) %>%
+  summarise(
+    p_value = wilcox.test(ALLELE.RAT[first.200 == 'Yes'], ALLELE.RAT[first.200 == 'No'], exact = FALSE)$p.value
+  )
+
+# Print the significance results for debugging
+print("Significance results:")
+print(significance_results_freq)
+
+# Create a mapping for dynamic y-positions and annotations
+significance_results_freq <- significance_results_freq %>%
+  mutate(
+    annotation = ifelse(p_value < 0.001, "***",
+                        ifelse(p_value < 0.01, "**",
+                               ifelse(p_value < 0.05, "*", "NS"))),
+    y_position = c(0.9, 1.0)  # Adjust y-positions dynamically
+  )
+
+# Create the boxplot
+bp_freq <- df.sub_freq %>%
+  ggplot(aes(x = first.200, y = ALLELE.RAT, fill = Freq.cat)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Ultra-rare variants" = "darkgrey",
+                               "Rare/Common variants" = "red")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. First 200 bp") +
+  xlab("First 200 bp") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.2) +  # Increased ylim to allow space for annotations
+  coord_flip() +
+  facet_nested(. ~ Freq.cat) +  # Facet by frequency category
+  # Add sample size as text labels above each boxplot
+  geom_text(data = count_data_freq, aes(
+    x = first.200,
+    y = ifelse(Freq.cat == "Ultra-rare variants", 1.13, 1.05),  # Adjust y-position for Ultra-rare variants
+    label = count
+  ),
+  size = 4, position = position_dodge(width = 0.25), vjust = -0.5)
+
+# Add significance annotations dynamically
+for (i in 1:nrow(significance_results_freq)) {
+  freq_category <- significance_results_freq$Freq.cat[i]
+  annotation <- significance_results_freq$annotation[i]
+  y_pos <- significance_results_freq$y_position[i]
+  
+  bp_freq <- bp_freq + geom_signif(
+    comparisons = list(c("Yes", "No")),
+    map_signif_level = TRUE,
+    annotations = annotation,
+    textsize = 4,
+    y_position = y_pos,
+    data = df.sub_freq %>% filter(Freq.cat == freq_category)
+  )
+}
+
+# Print the plot
+print(bp_freq)
