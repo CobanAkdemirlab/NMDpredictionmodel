@@ -1,0 +1,2146 @@
+---
+title: "TOPMed_ASE"
+output:
+  html_document: default
+  pdf_document: default
+date: "2025-03-28"
+---
+
+```{r libraries, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(ggplot2)
+library(dplyr)
+library(ggsignif)
+library(wesanderson)
+```
+
+## Canonical NMD Rule
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r canonical NMD rule}
+df.sub <- df[which(df$V2 == 'stopgain'), ]
+df.sub$last.EJC <- factor(df.sub$last.EJC, levels = c("upstream", "penultimate.last50bp", "last.exon"))
+df.sub <- df.sub[order(df.sub$last.EJC), ]
+
+sample_size_data <- df.sub %>%
+  group_by(last.EJC) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+bp <- df.sub %>% ggplot(aes(x = last.EJC, y = ALLELE.RAT, fill = last.EJC)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  coord_flip() +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14, face = "bold"),
+    panel.background = element_blank()
+  ) +
+  ggtitle("Canonical Rule") +
+  xlab("") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.1) +
+  geom_signif(
+    comparisons = list(c('penultimate.last50bp', 'last.exon'),
+                       c('upstream', 'last.exon'),
+                       c('penultimate.last50bp', 'upstream')),
+    map_signif_level = TRUE,
+    stat = "signif",
+    position = "identity",
+    test = "wilcox.test",
+    textsize = 4,
+    y_position = c(0.65, 0.8, 0.9)
+  ) +
+  scale_fill_manual(values = c("upstream" = "red",
+                               "penultimate.last50bp" = "darkgrey",
+                               "last.exon" = "darkgrey")) +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "black", linewidth = 0.5) +
+  geom_text(data = sample_size_data, aes(x = last.EJC, y = 1.03, label = count),
+            size = 4, position = position_dodge(width = 0.8), vjust = -0.5)
+
+bp
+
+```
+
+## 
+#
+```{r first 200bp }
+# Filter for rows where V2 is 'stopgain'
+df.sub <- df[which(df$V2 == 'stopgain'), ]
+
+# Convert 'first.200' values and filter out 'NA' values
+df.sub$first.200[which(df.sub$first.200 == 'first 200')] <- 'Yes'
+df.sub$first.200[which(df.sub$first.200 == 'not first 200')] <- 'No'
+df.sub <- df.sub[!is.na(df.sub$first.200), ]  # Remove NA values
+
+# Sort by 'first.200' and assign to 'cat.labels'
+df.sub <- df.sub[order(df.sub$first.200, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$first.200
+
+# Filter indices without NA in 'cat.labels'
+ind <- which(!is.na(df.sub$cat.labels))
+
+# Calculate the sample size for each category and last.EJC facet combination
+count_data <- df.sub %>%
+  group_by(cat.labels, last.EJC) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+# Load the required library
+library(wesanderson)
+
+# Create the boxplot with sample size and flipped coordinates
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes" = "red", "No" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD efficiency vs. first 200 bp") +
+  xlab("First 200 bp") +
+  ylab("NMD efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = unique(df.sub$cat.labels[ind])[1:2]) +
+  coord_flip() +  # Flipped coordinates
+  facet_nested(~last.EJC) + 
+  # Add sample size as text labels above each boxplot
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.09, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5)
+
+# Extract labels for comparisons
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+# Add significance comparisons
+bp <- bp + geom_signif(
+  comparisons = list(c(labels[1], labels[2])),
+  map_signif_level = TRUE,
+  textsize = 4,
+  y_position = c(0.9)
+)
+
+# Print the plot
+print(bp)
+```
+
+##Compute PTC distance to the end of the exon
+#scatter plot
+```{r}
+df.sub <- df.sub %>% filter(PTC_to_exon_end != 17075)
+# Ensure PTC_to_exon_end is numeric
+df.sub$PTC_to_exon_end <- as.numeric(df.sub$PTC_to_exon_end)
+
+
+# Create the scatter plot
+ptc_exon_plot <- ggplot(df.sub.filtered, aes(x = PTC_to_exon_end, y = ALLELE.RAT)) +
+  geom_point(alpha = 0.3, color = "blue", size = 1) +  # Scatter plot points
+  geom_smooth(method = "loess", color = "black", fill = "gray", alpha = 0.3) +  # Smoothed trend line
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black", size = 1) +  # Dashed line at exon boundary
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14, face = "bold"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. Dist. from PTC to Exon End") +
+  xlab("Distance from PTC to Exon End (nt)") +
+  ylab("NMD Efficiency") +
+  xlim(0, 5000)  # Limit x-axis to -500 nt
+
+print(ptc_exon_plot)
+
+```
+# Different cutoff
+```{r}
+ptc_exon_plot <- ggplot(df.sub.filtered, aes(x = PTC_to_exon_end, y = ALLELE.RAT)) +
+  geom_point(alpha = 0.3, color = "blue", size = 1) +  # Scatter plot points
+  geom_smooth(method = "loess", color = "black", fill = "gray", alpha = 0.3) +  # Smoothed trend line
+  geom_vline(xintercept = 0, linetype = "dashed", color = "black", size = 1) +  # Dashed line at exon boundary
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14, face = "bold"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. Dist. from PTC to Exon End") +
+  xlab("Distance from PTC to Exon End (nt)") +
+  ylab("NMD Efficiency") +
+  xlim(0, 2000)  # Limit x-axis to -500 nt
+
+print(ptc_exon_plot)
+
+```
+
+## Motif Feature: AGO1 Binding Sites
+#2 Between PTC and end of new 3'UTR (newUTR.AGO1)
+```{r}
+df.sub$newUTR.AGO1[df.sub$newUTR.AGO1 == '1'] <- 'Yes-AGO1'
+df.sub$newUTR.AGO1[df.sub$newUTR.AGO1 == '0'] <- 'No-AGO1'
+df.sub <- df.sub[!is.na(df.sub$newUTR.AGO1), ]
+df.sub$cat.labels <- df.sub$newUTR.AGO1
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+ggplot(df.sub[ind, ], aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-AGO1" = "red", "No-AGO1" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. newUTR AGO1") +
+  xlab("AGO1 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, vjust = -0.5) +
+  geom_signif(comparisons = list(c(labels[1], labels[2])),
+              map_signif_level = TRUE,
+              textsize = 4,
+              y_position = c(0.95))
+
+```
+#2 First 200bp of 3'UTR (3UTR.200.AGO1)
+
+```{r}
+df.sub$"3UTR.200.AGO1"[df.sub$"3UTR.200.AGO1" == '1'] <- 'Yes-AGO1'
+df.sub$"3UTR.200.AGO1"[df.sub$"3UTR.200.AGO1" == '0'] <- 'No-AGO1'
+df.sub <- df.sub[!is.na(df.sub$"3UTR.200.AGO1"), ]
+df.sub <- df.sub[order(df.sub$"3UTR.200.AGO1", decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$"3UTR.200.AGO1"
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-AGO1" = "red", "No-AGO1" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 14),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. 3'UTR first 200bp AGO1") +
+  xlab("AGO1 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+## Motif Feature: AGO1 Binding Near PTC
+#3 Within 100 nt of PTC (PTC.100AGO1)
+```{r}
+
+
+df.sub$PTC.100AGO1[df.sub$PTC.100AGO1 == '1'] <- 'Yes-AGO1'
+df.sub$PTC.100AGO1[df.sub$PTC.100AGO1 == '0'] <- 'No-AGO1'
+df.sub <- df.sub[!is.na(df.sub$PTC.100AGO1), ]
+df.sub <- df.sub[order(df.sub$PTC.100AGO1, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$PTC.100AGO1
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-AGO1" = "red", "No-AGO1" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. EJC.100 AGO1") +
+  xlab("AGO1 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+# ## Motif Feature: AGO1 Binding Between PTC and Nearest EJC
+
+#4 Presence of AGO1 in the region between the PTC and downstream EJC site: PTC.2.EJC.AGO1
+
+
+```{r PTC.2.EJC.AGO1, echo=FALSE}
+
+df.sub$PTC.2.EJC.AGO1[df.sub$PTC.2.EJC.AGO1 == '1'] <- 'Yes-AGO1'
+df.sub$PTC.2.EJC.AGO1[df.sub$PTC.2.EJC.AGO1 == '0'] <- 'No-AGO1'
+df.sub <- df.sub[!is.na(df.sub$PTC.2.EJC.AGO1), ]
+df.sub <- df.sub[order(df.sub$PTC.2.EJC.AGO1, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$PTC.2.EJC.AGO1
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-AGO1" = "red", "No-AGO1" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. PTC.2.EJC AGO1") +
+  xlab("AGO1 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+```
+
+##Motif Feature: AGO2 Binding Sites
+#1 Between PTC and end of new 3'UTR (newUTR.AGO2)
+```{r}
+df.sub$newUTR.AGO2[df.sub$newUTR.AGO2 == '1'] <- 'Yes-AGO2'
+df.sub$newUTR.AGO2[df.sub$newUTR.AGO2 == '0'] <- 'No-AGO2'
+df.sub <- df.sub[!is.na(df.sub$newUTR.AGO2), ]
+df.sub$cat.labels <- df.sub$newUTR.AGO2
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+ggplot(df.sub[ind, ], aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-AGO2" = "red", "No-AGO2" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. newUTR AGO2") +
+  xlab("AGO2 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, vjust = -0.5) +
+  geom_signif(comparisons = list(c(labels[1], labels[2])),
+              map_signif_level = TRUE,
+              textsize = 4,
+              y_position = c(0.95))
+
+```
+
+#2 First 200bp of 3'UTR (3UTR.200.AGO2)
+
+```{r}
+df.sub$"3UTR.200.AGO2"[df.sub$"3UTR.200.AGO2" == '1'] <- 'Yes-AGO2'
+df.sub$"3UTR.200.AGO2"[df.sub$"3UTR.200.AGO2" == '0'] <- 'No-AGO2'
+df.sub <- df.sub[!is.na(df.sub$"3UTR.200.AGO2"), ]
+df.sub <- df.sub[order(df.sub$"3UTR.200.AGO2", decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$"3UTR.200.AGO2"
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-AGO2" = "red", "No-AGO2" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 14),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. 3'UTR first 200bp AGO2") +
+  xlab("AGO2 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+## Motif Feature: AGO2 Binding Near PTC
+#3 Within 100 nt of PTC (PTC.100AGO2)
+```{r}
+
+
+df.sub$PTC.100AGO2[df.sub$PTC.100AGO2 == '1'] <- 'Yes-AGO2'
+df.sub$PTC.100AGO2[df.sub$PTC.100AGO2 == '0'] <- 'No-AGO2'
+df.sub <- df.sub[!is.na(df.sub$PTC.100AGO2), ]
+df.sub <- df.sub[order(df.sub$PTC.100AGO2, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$PTC.100AGO2
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-AGO2" = "red", "No-AGO2" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. EJC.100 AGO2") +
+  xlab("AGO2 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+
+# ## Motif Feature: AGO2 Binding Between PTC and Nearest EJC
+
+#4 Presence of AGO2 in the region between the PTC and downstream EJC site: PTC.2.EJC.AGO2
+
+
+```{r PTC.2.EJC.AGO2, echo=FALSE}
+
+df.sub$PTC.2.EJC.AGO2[df.sub$PTC.2.EJC.AGO2 == '1'] <- 'Yes-AGO2'
+df.sub$PTC.2.EJC.AGO2[df.sub$PTC.2.EJC.AGO2 == '0'] <- 'No-AGO2'
+df.sub <- df.sub[!is.na(df.sub$PTC.2.EJC.AGO2), ]
+df.sub <- df.sub[order(df.sub$PTC.2.EJC.AGO2, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$PTC.2.EJC.AGO2
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-AGO2" = "red", "No-AGO2" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. PTC.2.EJC AGO2") +
+  xlab("AGO2 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+```
+
+## Motif Feature: HNRNPD Binding Sites
+
+#1 New 3'UTR region: newUTR.HNRNPD
+```{r newUTR.HNRNPD, echo=FALSE}
+df.sub$newUTR.HNRNPD[df.sub$newUTR.HNRNPD == '1'] <- 'Yes-HNRNPD'
+df.sub$newUTR.HNRNPD[df.sub$newUTR.HNRNPD == '0'] <- 'No-HNRNPD'
+df.sub <- df.sub[!is.na(df.sub$newUTR.HNRNPD), ]
+df.sub <- df.sub[order(df.sub$newUTR.HNRNPD, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.HNRNPD
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPD" = "red", "No-HNRNPD" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR HNRNPD") +
+  xlab("HNRNPD Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+
+```
+
+#2 First 200bp of 3'UTR: 3UTR.200.HNRNPD
+
+```{r 3UTR.200.HNRNPD, echo=FALSE}
+df.sub$"3UTR.200.HNRNPD"[df.sub$"3UTR.200.HNRNPD" == '1'] <- 'Yes-HNRNPD'
+df.sub$"3UTR.200.HNRNPD"[df.sub$"3UTR.200.HNRNPD" == '0'] <- 'No-HNRNPD'
+df.sub <- df.sub[!is.na(df.sub$"3UTR.200.HNRNPD"), ]
+df.sub <- df.sub[order(df.sub$"3UTR.200.HNRNPD", decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$"3UTR.200.HNRNPD"
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPD" = "red", "No-HNRNPD" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 12),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. 3'UTR first 200bp HNRNPD") +
+  xlab("HNRNPD Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+```
+
+## Motif Feature: HNRNPD Binding Near PTC
+#3 100bp window around PTC: PTC.100HNRNPD
+```{r PTC.100HNRNPD, echo=FALSE}
+
+df.sub$PTC.100HNRNPD[df.sub$PTC.100HNRNPD == '1'] <- 'Yes-HNRNPD'
+df.sub$PTC.100HNRNPD[df.sub$PTC.100HNRNPD == '0'] <- 'No-HNRNPD'
+df.sub <- df.sub[!is.na(df.sub$PTC.100HNRNPD), ]
+df.sub <- df.sub[order(df.sub$PTC.100HNRNPD, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$PTC.100HNRNPD
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPD" = "red", "No-HNRNPD" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. PTC.100 HNRNPD") +
+  xlab("HNRNPD Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+# 100bp downstram of EJC: TJC.100HNRNPD
+```{r EJC.100.HNRNPD, echo=FALSE}
+
+
+df.sub$EJC.100.HNRNPD[df.sub$EJC.100.HNRNPD == '1'] <- 'Yes-HNRNPD'
+df.sub$EJC.100.HNRNPD[df.sub$EJC.100.HNRNPD == '0'] <- 'No-HNRNPD'
+df.sub <- df.sub[!is.na(df.sub$EJC.100.HNRNPD), ]
+df.sub <- df.sub[order(df.sub$EJC.100.HNRNPD, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$EJC.100.HNRNPD
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPD" = "red", "No-HNRNPD" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. EJC.100 HNRNPD") +
+  xlab("HNRNPD Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+## Motif Feature: HNRNPD Binding Between PTC and Nearest EJC
+
+#4 Presence of HNRNPD in the region between the PTC and downstream EJC site: PTC.2.EJC.HNRNPD
+
+
+```{r PTC.2.EJC.HNRNPD, echo=FALSE}
+
+df.sub$PTC.2.EJC.HNRNPD[df.sub$PTC.2.EJC.HNRNPD == '1'] <- 'Yes-HNRNPD'
+df.sub$PTC.2.EJC.HNRNPD[df.sub$PTC.2.EJC.HNRNPD == '0'] <- 'No-HNRNPD'
+df.sub <- df.sub[!is.na(df.sub$PTC.2.EJC.HNRNPD), ]
+df.sub <- df.sub[order(df.sub$PTC.2.EJC.HNRNPD, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$PTC.2.EJC.HNRNPD
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPD" = "red", "No-HNRNPD" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. PTC.2.EJC HNRNPD") +
+  xlab("HNRNPD Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+```
+
+## Motif Feature: HNRNPD Binding in 3'UTR
+#1 New 3'UTR region: newUTR.HNRNPDL
+```{r}
+df.sub$newUTR.HNRNPDL[df.sub$newUTR.HNRNPDL == '1'] <- 'Yes-HNRNPDL'
+df.sub$newUTR.HNRNPDL[df.sub$newUTR.HNRNPDL == '0'] <- 'No-HNRNPDL'
+df.sub <- df.sub[!is.na(df.sub$newUTR.HNRNPDL), ]
+df.sub <- df.sub[order(df.sub$newUTR.HNRNPDL, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.HNRNPDL
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPDL" = "red", "No-HNRNPDL" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 15),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR HNRNPDL") +
+  xlab("HNRNPDL Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+```
+
+
+
+# First 200bp of 3'UTR: 3UTR.200.HNRNPDL
+```{r}
+df.sub$"3UTR.200.HNRNPDL"[df.sub$"3UTR.200.HNRNPDL" == '1'] <- 'Yes-HNRNPDL'
+df.sub$"3UTR.200.HNRNPDL"[df.sub$"3UTR.200.HNRNPDL" == '0'] <- 'No-HNRNPDL'
+df.sub <- df.sub[!is.na(df.sub$"3UTR.200.HNRNPDL"), ]
+df.sub <- df.sub[order(df.sub$"3UTR.200.HNRNPDL", decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$"3UTR.200.HNRNPDL"
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPDL" = "red", "No-HNRNPDL" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 12),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. 3'UTR first 200bp HNRNPDL") +
+  xlab("HNRNPDL Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+
+## Motif Feature: HNRNPDL Binding Near PTC
+
+# 100bp window around PTC: PTC.100HNRNPDL
+```{r}
+df.sub$PTC.100HNRNPDL[df.sub$PTC.100HNRNPDL == '1'] <- 'Yes-HNRNPDL'
+df.sub$PTC.100HNRNPDL[df.sub$PTC.100HNRNPDL == '0'] <- 'No-HNRNPDL'
+df.sub <- df.sub[!is.na(df.sub$PTC.100HNRNPDL), ]
+df.sub <- df.sub[order(df.sub$PTC.100HNRNPDL, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$PTC.100HNRNPDL
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPDL" = "red", "No-HNRNPDL" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. PTC.100 HNRNPDL") +
+  xlab("HNRNPDL Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+```
+
+
+# 100bp downstream of EJC: EJC.100.HNRNPDL
+```{r}
+df.sub$EJC.100.HNRNPDL[df.sub$EJC.100.HNRNPDL == '1'] <- 'Yes-HNRNPDL'
+df.sub$EJC.100.HNRNPDL[df.sub$EJC.100.HNRNPDL == '0'] <- 'No-HNRNPDL'
+df.sub <- df.sub[!is.na(df.sub$EJC.100.HNRNPDL), ]
+df.sub <- df.sub[order(df.sub$EJC.100.HNRNPDL, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$EJC.100.HNRNPDL
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPDL" = "red", "No-HNRNPDL" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. EJC.100 HNRNPDL") +
+  xlab("HNRNPDL Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+```
+
+
+## Motif Feature: HNRNPDL Binding Between PTC and Nearest EJC
+
+# Presence of HNRNPD motif in the region between the PTC and downstream EJC site: PTC.2.EJC.HNRNPDL
+```{r}
+df.sub$PTC.2.EJC.HNRNPDL[df.sub$PTC.2.EJC.HNRNPDL == '1'] <- 'Yes-HNRNPDL'
+df.sub$PTC.2.EJC.HNRNPDL[df.sub$PTC.2.EJC.HNRNPDL == '0'] <- 'No-HNRNPDL'
+df.sub <- df.sub[!is.na(df.sub$PTC.2.EJC.HNRNPDL), ]
+df.sub <- df.sub[order(df.sub$PTC.2.EJC.HNRNPDL, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$PTC.2.EJC.HNRNPDL
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPDL" = "red", "No-HNRNPDL" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 15),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. PTC.2.EJC HNRNPDL") +
+  xlab("HNRNPDL Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+## Motif Feature: HNRNPH1 Binding in 3'UTR (similar results HNRNPH2 & HNRNPH3)
+# New 3'UTR region: newUTR.HNRNPH1
+```{r}
+df.sub$newUTR.HNRNPH1[df.sub$newUTR.HNRNPH1 == '1'] <- 'Yes-HNRNPH1'
+df.sub$newUTR.HNRNPH1[df.sub$newUTR.HNRNPH1 == '0'] <- 'No-HNRNPH1'
+df.sub <- df.sub[!is.na(df.sub$newUTR.HNRNPH1), ]
+df.sub <- df.sub[order(df.sub$newUTR.HNRNPH1, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.HNRNPH1
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPH1" = "red", "No-HNRNPH1" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 15),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR HNRNPH1") +
+  xlab("HNRNPH1 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+```
+# First 200bp of 3'UTR: 3UTR.200.HNRNPH1
+```{r}
+df.sub$"3UTR.200.HNRNPH1"[df.sub$"3UTR.200.HNRNPH1" == '1'] <- 'Yes-HNRNPH1'
+df.sub$"3UTR.200.HNRNPH1"[df.sub$"3UTR.200.HNRNPH1" == '0'] <- 'No-HNRNPH1'
+df.sub <- df.sub[!is.na(df.sub$"3UTR.200.HNRNPH1"), ]
+df.sub <- df.sub[order(df.sub$"3UTR.200.HNRNPH1", decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$"3UTR.200.HNRNPH1"
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPH1" = "red", "No-HNRNPH1" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 12),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. 3'UTR first 200bp HNRNPH1") +
+  xlab("HNRNPH1 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+```
+## Motif Feature: HNRNPH1 Binding Near PTC
+
+# 100bp window around PTC: PTC.100HNRNPH1
+```{r}
+df.sub$PTC.100HNRNPH1[df.sub$PTC.100HNRNPH1 == '1'] <- 'Yes-HNRNPH1'
+df.sub$PTC.100HNRNPH1[df.sub$PTC.100HNRNPH1 == '0'] <- 'No-HNRNPH1'
+df.sub <- df.sub[!is.na(df.sub$PTC.100HNRNPH1), ]
+df.sub <- df.sub[order(df.sub$PTC.100HNRNPH1, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$PTC.100HNRNPH1
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPH1" = "red", "No-HNRNPH1" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. PTC.100 HNRNPH1") +
+  xlab("HNRNPH1 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+
+```
+
+
+
+## Motif Feature: HNRNPH1 Binding Between PTC and Nearest EJC
+
+# Presence of HNRNPH1 motif in the region between the PTC and downstream EJC site: PTC.2.EJC.HNRNPH1
+```{r}
+df.sub$PTC.2.EJC.HNRNPH1[df.sub$PTC.2.EJC.HNRNPH1 == '1'] <- 'Yes-HNRNPH1'
+df.sub$PTC.2.EJC.HNRNPH1[df.sub$PTC.2.EJC.HNRNPH1 == '0'] <- 'No-HNRNPH1'
+df.sub <- df.sub[!is.na(df.sub$PTC.2.EJC.HNRNPH1), ]
+df.sub <- df.sub[order(df.sub$PTC.2.EJC.HNRNPH1, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$PTC.2.EJC.HNRNPH1
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPH1" = "red", "No-HNRNPH1" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 15),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. PTC.2.EJC HNRNPH1") +
+  xlab("HNRNPH1 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+## 
+# 
+
+```{r}
+df.sub$newUTR.HNRNPK[df.sub$newUTR.HNRNPK == '1'] <- 'Yes-HNRNPK'
+df.sub$newUTR.HNRNPK[df.sub$newUTR.HNRNPK == '0'] <- 'No-HNRNPK'
+df.sub <- df.sub[!is.na(df.sub$newUTR.HNRNPK), ]
+df.sub <- df.sub[order(df.sub$newUTR.HNRNPK, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.HNRNPK
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPK" = "red", "No-HNRNPK" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR HNRNPK") +
+  xlab("HNRNPK Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+
+```{r}
+df.sub$newUTR.HNRNPF[df.sub$newUTR.HNRNPF == '1'] <- 'Yes-HNRNPF'
+df.sub$newUTR.HNRNPF[df.sub$newUTR.HNRNPF == '0'] <- 'No-HNRNPF'
+df.sub <- df.sub[!is.na(df.sub$newUTR.HNRNPF), ]
+df.sub <- df.sub[order(df.sub$newUTR.HNRNPF, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.HNRNPF
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPF" = "red", "No-HNRNPF" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR HNRNPF") +
+  xlab("HNRNPF Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+
+```{r}
+df.sub$newUTR.HNRNPM[df.sub$newUTR.HNRNPM == '1'] <- 'Yes-HNRNPM'
+df.sub$newUTR.HNRNPM[df.sub$newUTR.HNRNPM == '0'] <- 'No-HNRNPM'
+df.sub <- df.sub[!is.na(df.sub$newUTR.HNRNPM), ]
+df.sub <- df.sub[order(df.sub$newUTR.HNRNPM, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.HNRNPM
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPM" = "red", "No-HNRNPM" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR HNRNPM") +
+  xlab("HNRNPM Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+
+```{r}
+df.sub$newUTR.HNRNPU[df.sub$newUTR.HNRNPU == '1'] <- 'Yes-HNRNPU'
+df.sub$newUTR.HNRNPU[df.sub$newUTR.HNRNPU == '0'] <- 'No-HNRNPU'
+df.sub <- df.sub[!is.na(df.sub$newUTR.HNRNPU), ]
+df.sub <- df.sub[order(df.sub$newUTR.HNRNPU, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.HNRNPU
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-HNRNPU" = "red", "No-HNRNPU" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR HNRNPU") +
+  xlab("HNRNPU Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+```{r}
+df.sub$newUTR.RBM3[df.sub$newUTR.RBM3 == '1'] <- 'Yes-RBM3'
+df.sub$newUTR.RBM3[df.sub$newUTR.RBM3 == '0'] <- 'No-RBM3'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBM3), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBM3, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBM3
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBM3" = "red", "No-RBM3" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBM3") +
+  xlab("RBM3 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+```{r}
+df.sub$newUTR.RBM4[df.sub$newUTR.RBM4 == '1'] <- 'Yes-RBM4'
+df.sub$newUTR.RBM4[df.sub$newUTR.RBM4 == '0'] <- 'No-RBM4'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBM4), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBM4, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBM4
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBM4" = "red", "No-RBM4" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBM4") +
+  xlab("RBM4 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+```{r}
+df.sub$newUTR.RBM5[df.sub$newUTR.RBM5 == '1'] <- 'Yes-RBM5'
+df.sub$newUTR.RBM5[df.sub$newUTR.RBM5 == '0'] <- 'No-RBM5'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBM5), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBM5, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBM5
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBM5" = "red", "No-RBM5" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBM5") +
+  xlab("RBM5 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+
+```{r}
+df.sub$newUTR.RBM6[df.sub$newUTR.RBM6 == '1'] <- 'Yes-RBM6'
+df.sub$newUTR.RBM6[df.sub$newUTR.RBM6 == '0'] <- 'No-RBM6'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBM6), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBM6, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBM6
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBM6" = "red", "No-RBM6" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBM6") +
+  xlab("RBM6 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##RBM8A
+
+```{r}
+df.sub$newUTR.RBM8A[df.sub$newUTR.RBM8A == '1'] <- 'Yes-RBM8A'
+df.sub$newUTR.RBM8A[df.sub$newUTR.RBM8A == '0'] <- 'No-RBM8A'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBM8A), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBM8A, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBM8A
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBM8A" = "red", "No-RBM8A" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBM8A") +
+  xlab("RBM8A Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+```{r}
+df.sub$newUTR.RBM14[df.sub$newUTR.RBM14 == '1'] <- 'Yes-RBM14'
+df.sub$newUTR.RBM14[df.sub$newUTR.RBM14 == '0'] <- 'No-RBM14'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBM14), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBM14, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBM14
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBM14" = "red", "No-RBM14" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBM14") +
+  xlab("RBM14 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+##
+#
+
+```{r}
+df.sub$newUTR.RBM25[df.sub$newUTR.RBM25 == '1'] <- 'Yes-RBM25'
+df.sub$newUTR.RBM25[df.sub$newUTR.RBM25 == '0'] <- 'No-RBM25'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBM25), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBM25, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBM25
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBM25" = "red", "No-RBM25" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBM25") +
+  xlab("RBM25 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+
+```{r}
+df.sub$newUTR.RBM41[df.sub$newUTR.RBM41 == '1'] <- 'Yes-RBM41'
+df.sub$newUTR.RBM41[df.sub$newUTR.RBM41 == '0'] <- 'No-RBM41'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBM41), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBM41, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBM41
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBM41" = "red", "No-RBM41" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBM41") +
+  xlab("RBM41 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+```{r}
+df.sub$newUTR.RBM42[df.sub$newUTR.RBM42 == '1'] <- 'Yes-RBM42'
+df.sub$newUTR.RBM42[df.sub$newUTR.RBM42 == '0'] <- 'No-RBM42'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBM42), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBM42, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBM42
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBM42" = "red", "No-RBM42" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBM42") +
+  xlab("RBM42 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+
+```{r}
+df.sub$newUTR.RBM46[df.sub$newUTR.RBM46 == '1'] <- 'Yes-RBM46'
+df.sub$newUTR.RBM46[df.sub$newUTR.RBM46 == '0'] <- 'No-RBM46'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBM46), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBM46, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBM46
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBM46" = "red", "No-RBM46" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBM46") +
+  xlab("RBM46 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+```{r}
+df.sub$newUTR.RBMS1[df.sub$newUTR.RBMS1 == '1'] <- 'Yes-RBMS1'
+df.sub$newUTR.RBMS1[df.sub$newUTR.RBMS1 == '0'] <- 'No-RBMS1'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBMS1), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBMS1, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBMS1
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBMS1" = "red", "No-RBMS1" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBMS1") +
+  xlab("RBMS1 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+```{r}
+df.sub$newUTR.RBMS3[df.sub$newUTR.RBMS3 == '1'] <- 'Yes-RBMS3'
+df.sub$newUTR.RBMS3[df.sub$newUTR.RBMS3 == '0'] <- 'No-RBMS3'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBMS3), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBMS3, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBMS3
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBMS3" = "red", "No-RBMS3" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBMS3") +
+  xlab("RBMS3 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+```{r}
+df.sub$newUTR.RBMY1A1[df.sub$newUTR.RBMY1A1 == '1'] <- 'Yes-RBMY1A1'
+df.sub$newUTR.RBMY1A1[df.sub$newUTR.RBMY1A1 == '0'] <- 'No-RBMY1A1'
+df.sub <- df.sub[!is.na(df.sub$newUTR.RBMY1A1), ]
+df.sub <- df.sub[order(df.sub$newUTR.RBMY1A1, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.RBMY1A1
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-RBMY1A1" = "red", "No-RBMY1A1" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 15),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR RBMY1A1") +
+  xlab("RBMY1A1 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+
+
+##
+#
+```{r}
+df.sub$newUTR.ESRP2[df.sub$newUTR.ESRP2 == '1'] <- 'Yes-ESRP2'
+df.sub$newUTR.ESRP2[df.sub$newUTR.ESRP2 == '0'] <- 'No-ESRP2'
+df.sub <- df.sub[!is.na(df.sub$newUTR.ESRP2), ]
+df.sub <- df.sub[order(df.sub$newUTR.ESRP2, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.ESRP2
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-ESRP2" = "red", "No-ESRP2" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR ESRP2") +
+  xlab("ESRP2 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+##
+#
+```{r}
+df.sub$newUTR.SRP14[df.sub$newUTR.SRP14 == '1'] <- 'Yes-SRP14'
+df.sub$newUTR.SRP14[df.sub$newUTR.SRP14 == '0'] <- 'No-SRP14'
+df.sub <- df.sub[!is.na(df.sub$newUTR.SRP14), ]
+df.sub <- df.sub[order(df.sub$newUTR.SRP14, decreasing = FALSE), ]
+df.sub$cat.labels <- df.sub$newUTR.SRP14
+ind <- which(!is.na(df.sub$cat.labels))
+
+count_data <- df.sub %>%
+  group_by(cat.labels) %>%
+  summarise(count = n()) %>%
+  ungroup()
+
+labels <- unique(df.sub$cat.labels[ind])[1:2]
+
+bp <- df.sub[ind, ] %>%
+  ggplot(aes(x = cat.labels, y = ALLELE.RAT, fill = cat.labels)) +
+  geom_boxplot(width = 0.2, color = "black", alpha = 0.8) +
+  scale_fill_manual(values = c("Yes-SRP14" = "red", "No-SRP14" = "darkgrey")) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(size = 16),
+    axis.text = element_text(size = 14),
+    axis.title = element_text(size = 16, face = "bold"),
+    text = element_text(size = 16),
+    panel.background = element_blank()
+  ) +
+  ggtitle("NMD Efficiency vs. New 3'UTR SRP14") +
+  xlab("SRP14 Binding Motif") +
+  ylab("NMD Efficiency") +
+  ylim(0, 1.15) +
+  scale_x_discrete(limits = labels) +
+  coord_flip() +
+  geom_text(data = count_data, aes(x = cat.labels, y = 1.1, label = count),
+            size = 4, position = position_dodge(width = 0.75), vjust = -0.5) +
+  geom_signif(
+    comparisons = list(c(labels[1], labels[2])),
+    map_signif_level = TRUE,
+    textsize = 4,
+    y_position = c(0.95)
+  )
+
+bp
+```
+
+```{r}
+rmarkdown::render("TOPMed_ASE_1.Rmd", output_format = "pdf_document")
+
+```
+
+```{r}
+rmarkdown::render("TOPMed_ASE_1.Rmd", output_format = "html_document")
+
+```
+
