@@ -1,0 +1,38 @@
+x <- readRDS('chr10.rds') 
+
+x_snv_pass <- x[x$filter == "PASS" & x$type == "snv"] 
+
+df <- as.data.frame(x_snv_pass) 
+
+write.table(df, file = "chr10snv_pass_variants.tsv", sep = "\t", row.names = FALSE, quote = FALSE) 
+
+ 
+
+saveRDS(df, file = "chr10snv_pass_variants_df.rds") 
+
+# Create vector of file names 
+
+files <- paste0("chr", 1:22, "snv_pass_variants_df.rds") 
+
+  
+
+# Read and combine them 
+
+merged_list <- lapply(files, readRDS) 
+
+merged_df <- do.call(rbind, merged_list) 
+
+  
+
+# Check dimensions 
+
+dim(merged_df) 
+
+  
+
+# Optionally save 
+
+saveRDS(merged_df, file = "merged_chr1to22_snv_pass_df.rds") 
+
+write.table(merged_df, file = "merged_chr1to22_snv_pass_df.tsv", sep = "\t", row.names = FALSE, quote = FALSE) 
+
