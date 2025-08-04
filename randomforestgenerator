@@ -1,0 +1,13 @@
+sub.fr <- NULL
+
+
+set.seed(17)
+
+#Calculate the size of each of the data sets:
+data_set_size <- floor(80*nrow(sub.fr.ch)/100)
+# Generate a random sample of "data_set_size" indexes
+indexes <- sample(1:nrow(sub.fr.ch), size = data_set_size)
+training <- sub.fr.ch[indexes,]
+# Assign the data to the correct sets
+validation1 <- sub.fr.ch[-indexes,]
+
