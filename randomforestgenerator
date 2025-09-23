@@ -58,3 +58,18 @@ g2 <- ggplot(imp[1:20,], aes(x=reorder(varnames, MeanDecreaseAccuracy), y=MeanDe
   ylab("MeanDecreaseAccuracy") +  theme(text = element_text(face="bold",size=20,family="Comic Sans MS")) + coord_flip()
 
 
+
+### generate ROC curve
+library(ROCR)
+
+pred1=predict(rf_classifier,type = "prob")
+perf = prediction(pred1, factor(validation1$ALLELE.RAT>=0.65))
+#Area under curve
+auc = performance(perf, "auc")
+auc
+#True Positive and Negative Rate
+pred3 = performance(perf, "tpr","fpr")
+#Plot the ROC curve
+plot(pred3,main="ROC Curve for Random Forest",col=2,lwd=2)
+abline(a=0,b=1,lwd=2,lty=2,col="gray")
+
