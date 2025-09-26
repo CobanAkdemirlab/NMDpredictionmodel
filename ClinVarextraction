@@ -1,0 +1,47 @@
+HDR='seqnames\tstart\tend\twidth\tstrand\tref\talt\tqual\tfilter\tkey\ttype\tconsequence\tgene\tclnsig\talleleid\trs\tclndn\tclnhgvs'
+# VCF subset
+bcftools view -i 'MC ~ "frameshift_variant"' clinvar_20250923.vcf.gz -Oz -o clinvar_frameshift.vcf.gz
+tabix -p vcf clinvar_frameshift.vcf.gz
+
+# Query with useful INFO
+{
+  echo -e "$HDR";
+  bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%QUAL\t%FILTER\t%CLNVC\t%MC\t%GENEINFO\t%CLNSIG\t%ALLELEID\t%RS\t%CLNDN\t%CLNHGVS\n' clinvar_frameshift.vcf.gz \
+  | awk -F'\t' 'BEGIN{OFS="\t"}{
+      seq=$1; start=$2+0; ref=$3; alt=$4; qual=$5; filt=$6; clnvc=$7; mc=$8; geneinfo=$9; clnsig=$10; alleleid=$11; rs=$12; clndn=$13; clnhgvs=$14;
+      end=start+length(ref)-1;
+      width=length(ref);
+      strand="*";
+      key=seq ":" start "|" ref "|" alt;
+      # primary consequence: take first MC term, use label after "|"
+      split(mc,a,/,/); split(a[1],b,/\|/); cons=(b[2]==""?a[1]:b[2]);
+      # gene symbol: take first gene before ":" in GENEINFO
+      split(geneinfo,g,/\|/); split(g[1],h,/:/); gene=h[1];
+      print seq,start,end,width,strand,ref,alt,qual,filt,key,clnvc,cons,gene,clnsig,alleleid,rs,clndn,clnhgvs
+    }'
+} > clinvar_frameshift.tsv
+# VCF subset for stopgain/nonsense
+bcftools view -i 'MC ~ "stop_gained" || MC ~ "nonsense"' clinvar_20250923.vcf.gz -Oz -o clinvar_stopgain.vcf.gz
+tabix -p vcf clinvar_stopgain.vcf.gz
+
+# Same tidy table
+{
+  echo -e "$HDR";
+  bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t%QUAL\t%FILTER\t%CLNVC\t%MC\t%GENEINFO\t%CLNSIG\t%ALLELEID\t%RS\t%CLNDN\t%CLNHGVS\n' clinvar_stopgain.vcf.gz \
+  | awk -F'\t' 'BEGIN{OFS="\t"}{
+      seq=$1; start=$2+0; ref=$3; alt=$4; qual=$5; filt=$6; clnvc=$7; mc=$8; geneinfo=$9; clnsig=$10; alleleid=$11; rs=$12; clndn=$13; clnhgvs=$14;
+      end=start+length(ref)-1;
+      width=length(ref);
+      strand="*";
+      key=seq ":" start "|" ref "|" alt;
+      split(mc,a,/,/); split(a[1],b,/\|/); cons=(b[2]==""?a[1]:b[2]);
+      split(geneinfo,g,/\|/); split(g[1],h,/:/); gene=h[1];
+      print seq,start,end,width,strand,ref,alt,qual,filt,key,clnvc,cons,gene,clnsig,alleleid,rs,clndn,clnhgvs
+    }'
+} > clinvar_stopgain.tsv
+Rscript -e 'x<-read.table("clinvar_frameshift.tsv",sep="\t",header=TRUE,quote="",comment.char=""); save(x,file="clinvar_frameshift.RData")'
+Rscript -e 'x<-read.table("clinvar_stopgain.tsv",sep="\t",header=TRUE,quote="",comment.char=""); save(x,file="clinvar_stopgain.RData")'
+
+head -n 5 clinvar_frameshift.tsv | column -t -s$'\t'
+head -n 5 clinvar_stopgain.tsv   | column -t -s$'\t'
+wc -l clinvar_frameshift.tsv clinvar_stopgain.tsv
