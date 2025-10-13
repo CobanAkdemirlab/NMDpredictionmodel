@@ -1,0 +1,119 @@
+#Complete case analysis was done in October 2025
+library(caret)
+library(randomForest)
+library(ROCR)
+library(ggplot2)
+
+set.seed(17)
+
+# --- Base data (already NA-free overall per your df_na = 5554 x 1007) ---
+sub.fr.ch <- as.data.frame(df_na)
+
+# Optional: drop if present
+if ("NMD.ESCAPEE" %in% names(sub.fr.ch)) sub.fr.ch$NMD.ESCAPEE <- NULL
+
+# 1) Label and remove numeric target from predictors
+sub.fr.ch$LABEL <- factor(ifelse(sub.fr.ch$ALLELE.RAT >= 0.65, "High", "Low"),
+                          levels = c("Low","High"))
+sub.fr.ch$ALLELE.RAT <- NULL
+
+# 2) Stratified 80/20 split (avoids losing a class)
+idx <- createDataPartition(sub.fr.ch$LABEL, p = 0.80, list = FALSE)
+training   <- sub.fr.ch[idx, , drop = FALSE]
+validation <- sub.fr.ch[-idx, , drop = FALSE]
+
+# 3) Drop predictor columns that have ANY NA in TRAINING (and mirror drop in validation)
+preds <- setdiff(names(training), "LABEL")
+na_cols <- names(which(colSums(is.na(training[, preds, drop = FALSE])) > 0))
+if (length(na_cols)) {
+  keep <- setdiff(preds, na_cols)
+  training   <- training[, c("LABEL", keep), drop = FALSE]
+  validation <- validation[, c("LABEL", keep), drop = FALSE]
+  preds <- keep
+}
+
+# 4) Remove near-zero variance predictors (prevents contrasts errors)
+nzv_idx <- nearZeroVar(training[, preds, drop = FALSE], saveMetrics = FALSE)
+if (length(nzv_idx)) {
+  drop_cols <- preds[nzv_idx]
+  keep <- setdiff(preds, drop_cols)
+  training   <- training[, c("LABEL", keep), drop = FALSE]
+  validation <- validation[, c("LABEL", keep), drop = FALSE]
+  preds <- keep
+}
+
+# 5) Drop single-level factor predictors in TRAINING (and mirror drop in validation)
+single_level <- vapply(training[, preds, drop = FALSE], function(x) is.factor(x) && nlevels(x) < 2, logical(1))
+if (any(single_level)) {
+  drop_cols <- names(single_level)[single_level]
+  keep <- setdiff(preds, drop_cols)
+  training   <- training[, c("LABEL", keep), drop = FALSE]
+  validation <- validation[, c("LABEL", keep), drop = FALSE]
+  preds <- keep
+}
+
+# 6) Align factor levels
+for (col in preds) {
+  if (is.factor(training[[col]])) {
+    training[[col]]  <- droplevels(training[[col]])
+    validation[[col]] <- factor(validation[[col]], levels = levels(training[[col]]))
+  }
+}
+validation$LABEL <- factor(validation$LABEL, levels = levels(training$LABEL))
+
+# 7) Train Random Forest (your original backend)
+rf_fit <- train(
+  LABEL ~ .,
+  data = training,
+  method = "rf",
+  importance = TRUE,
+  trControl = trainControl(classProbs = TRUE),
+  ntree = 1000
+)
+
+# 8) Predict & Confusion Matrix
+pred_cls <- predict(rf_fit, validation)
+cm <- confusionMatrix(pred_cls, validation$LABEL, positive = "High")
+print(cm)
+
+# 9) Save metrics
+metrics <- data.frame(
+  Accuracy    = cm$overall["Accuracy"],
+  Sensitivity = cm$byClass["Sensitivity"],
+  Specificity = cm$byClass["Specificity"],
+  PPV         = cm$byClass["Pos Pred Value"],
+  NPV         = cm$byClass["Neg Pred Value"]
+)
+write.csv(metrics, "random_forest_metrics_8020.csv", row.names = FALSE)
+
+# 10) Variable importance (per variable)
+imp <- data.frame(varImpPlot(rf_fit$finalModel))
+imp$Variable <- rownames(imp); rownames(imp) <- NULL
+imp <- imp[order(imp$MeanDecreaseGini, decreasing = TRUE), ]
+
+topN <- min(20, nrow(imp))
+g1 <- ggplot(imp[1:topN, ],
+             aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_point() +
+  geom_segment(aes(x = Variable, xend = Variable, y = 0, yend = MeanDecreaseGini)) +
+  coord_flip() + theme_minimal(base_size = 14) +
+  labs(title = sprintf("Top %d Feature Importances (Gini)", topN), x = NULL, y = "MeanDecreaseGini")
+print(g1)
+
+# 11) ROC / AUC
+rf_prob <- predict(rf_fit, validation, type = "prob")[, "High"]
+prd <- ROCR::prediction(rf_prob, validation$LABEL)
+roc <- ROCR::performance(prd, "tpr", "fpr")
+plot(roc, main = "ROC Curve (Random Forest)", lwd = 2); abline(a = 0, b = 1, lty = 2, col = "gray")
+auc <- ROCR::performance(prd, "auc")@y.values[[1]]
+cat("AUC:", auc, "\n")
+
+
+library(pROC)
+roc_obj <- roc(response = validation$LABEL,
+               predictor = rf_prob,
+               levels = c("Low", "High"),   # ensure order
+               direction = "<")             # maybe “>” depending on your labeling
+auc_val <- auc(roc_obj)
+print(roc_obj)
+cat("pROC AUC:", auc_val, "\n")
