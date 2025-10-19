@@ -117,3 +117,15 @@ roc_obj <- roc(response = validation$LABEL,
 auc_val <- auc(roc_obj)
 print(roc_obj)
 cat("pROC AUC:", auc_val, "\n")
+
+ggsave("Top20_Feature_Importances.png", 
+       plot = g1, 
+       width = 8, height = 6, dpi = 300)
+
+# Save ROC curve as a PNG (high resolution)
+png("ROC_Curve_RandomForest.png", width = 1600, height = 1200, res = 300)
+
+plot(roc, main = "ROC Curve (Random Forest)", lwd = 2)
+abline(a = 0, b = 1, lty = 2, col = "gray")
+
+dev.off()   # closes the file and writes it
