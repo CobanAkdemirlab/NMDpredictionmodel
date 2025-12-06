@@ -1,0 +1,4 @@
+library(aenmd)
+vars <- aenmd:::parse_vcf_vcfR("/home/iegab/clinvar/clinvar_20250923.vcf.gz")
+vr <- process_variants(vars$vcf_rng)
+
