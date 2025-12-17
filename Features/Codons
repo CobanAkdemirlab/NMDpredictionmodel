@@ -9,8 +9,6 @@
 ##  - df$txnames contains Ensembl transcript IDs (ENST)
 ##  - df$V3 contains protein annotation (e.g. p.Gln28Ter)
 ##
-## Author: <Your Name>
-## Date: <YYYY-MM-DD>
 ############################################################
 
 ## ---------------------------
