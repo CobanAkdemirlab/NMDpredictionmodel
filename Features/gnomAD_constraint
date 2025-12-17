@@ -1,0 +1,6 @@
+df$LOEUF_cat <- cut(
+  df$oe_lof_upper,
+  breaks = c(-Inf, 0.2, 0.6, Inf),
+  labels = c("Very LoF-intolerant (0-0.2)", "Moderately_constrained (0.2-0.6)", "LoF_tolerant (0.6-2)"),
+  right = TRUE
+)
