@@ -1,0 +1,104 @@
+################################################################################
+## Compute codon optimality scores (Lindeboom et al. 2016)
+##
+## For each transcript, compute:
+##   1) Optimal codon usage across the entire coding sequence
+##   2) Optimal codon usage within the first 50 codons
+##
+## Optimal codons are defined by tRNA gene copy count (highest counts).
+################################################################################
+
+# ---------------------------------------------------------------------------
+# Step 1 — Load tRNA annotation and extract anticodons
+# ---------------------------------------------------------------------------
+trna_map <- read.table(
+  "hg38-tRNAs/hg38-tRNAs_name_map.txt",
+  header = TRUE, sep = "\t", stringsAsFactors = FALSE
+)
+
+# extract valid 3nt anticodons from the GtRNAdb ID
+trna_map$Anticodon <- sub("tRNA-[^-]+-([ACGT]{3})-.*", "\\1", trna_map$GtRNAdb_id)
+
+# keep only valid triplet anticodons
+valid_idx <- grepl("^[ACGT]{3}$", trna_map$Anticodon)
+trna_valid <- trna_map[valid_idx, ]
+
+# count tRNA genes for each anticodon
+trna_counts <- table(trna_valid$Anticodon)
+
+# ---------------------------------------------------------------------------
+# Step 2 — Convert anticodon → codon
+# ---------------------------------------------------------------------------
+anticodon_to_codon <- function(anticodon) {
+  rna_anti <- chartr("T", "U", anticodon)       # convert T->U
+  codon <- paste(rev(strsplit(rna_anti, "")[[1]]), collapse = "")
+  return(codon)
+}
+
+codon_counts <- sapply(names(trna_counts), anticodon_to_codon)
+codon_counts <- setNames(as.integer(trna_counts), codon_counts)
+
+# ---------------------------------------------------------------------------
+# Step 3 — Define optimal codons
+#    Here we take the top 20% by tRNA count (Lindeboom concept)
+# ---------------------------------------------------------------------------
+threshold <- quantile(codon_counts, probs = 0.80)
+optimal_codons <- names(codon_counts)[codon_counts >= threshold]
+
+message("Optimal codons defined (top 20% by tRNA gene count):")
+print(optimal_codons)
+
+# ---------------------------------------------------------------------------
+# Step 4 — Prepare CDS sequences for transcript matching
+# ---------------------------------------------------------------------------
+# clean transcript names in cds_seqs (remove version)
+names(cds_seqs) <- sub("\\..*$", "", names(cds_seqs))
+
+# ensure df has a cleaned transcript ID
+df$tx_clean <- sub("\\..*$", "", df$txnames.x)
+
+# ---------------------------------------------------------------------------
+# Step 5 — Codon counts helper
+# ---------------------------------------------------------------------------
+get_codon_freq <- function(seq) {
+  substring(seq,
+            first = seq(1, nchar(seq) - 2, by = 3),
+            last  = seq(3, nchar(seq), by = 3))
+}
+
+compute_optimal_frac <- function(codons, optimal_codons) {
+  mean(codons %in% optimal_codons)
+}
+
+# ---------------------------------------------------------------------------
+# Step 6 — Compute whole-CDS and first-50 codon optimality
+# ---------------------------------------------------------------------------
+df$OptCod_WholeCDS <- NA_real_
+df$OptCod_First50 <- NA_real_
+
+for (i in seq_len(nrow(df))) {
+
+  tx <- df$tx_clean[i]
+  if (!tx %in% names(cds_seqs)) next
+
+  dna_seq <- as.character(cds_seqs[[tx]])
+  if (nchar(dna_seq) < 3) next
+
+  codons <- get_codon_freq(dna_seq)
+
+  # whole CDS
+  df$OptCod_WholeCDS[i] <- compute_optimal_frac(codons, optimal_codons)
+
+  # first 50 codons (if available)
+  if (length(codons) >= 50) {
+    df$OptCod_First50[i] <- compute_optimal_frac(codons[1:50], optimal_codons)
+  } else {
+    df$OptCod_First50[i] <- compute_optimal_frac(codons, optimal_codons)
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Step 7 — Summary check
+# ---------------------------------------------------------------------------
+summary(df$OptCod_WholeCDS)
+summary(df$OptCod_First50)
