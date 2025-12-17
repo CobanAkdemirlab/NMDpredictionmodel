@@ -6,4 +6,19 @@ head(tpm[,1:6])
 # Median Expression
 exp <- read.table('GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt',header=TRUE,sep='\t')
 
-# mRNAHalfLifeMin
+# mRNAHalfLifeMin (PC)
+library(readxl)
+
+file <- "/Users/iegab/Downloads/13059_2022_2811_MOESM3_ESM.xlsx"
+
+# skip first 2 rows so row 3 becomes the header
+hl3 <- read_excel(file, sheet = "human", skip = 2)
+
+# check the first few columns now
+head(hl3)
+names(hl3)
+
+
+
+
+#
