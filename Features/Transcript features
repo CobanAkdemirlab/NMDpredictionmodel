@@ -19,6 +19,13 @@ head(hl3)
 names(hl3)
 
 
+df <- merge(
+  df,
+  hl3,
+  by.x = "gene_id1",
+  by.y = "Ensembl Gene Id",
+  all.x = TRUE
+)
 
 
 #
