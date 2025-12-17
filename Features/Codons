@@ -1,59 +1,120 @@
-## Initialize columns
-df$PTC.minus1.aa <- NA_character_
+############################################################
+## PTC Amino-Acid Context Extraction
+## GENCODE v26 / hg38
+##
+## Extracts -2, -1, +1, +2 amino acids surrounding
+## premature termination codons (PTCs).
+##
+## Works for TOPMed and gnomAD datasets provided:
+##  - df$txnames contains Ensembl transcript IDs (ENST)
+##  - df$V3 contains protein annotation (e.g. p.Gln28Ter)
+##
+## Author: <Your Name>
+## Date: <YYYY-MM-DD>
+############################################################
+
+## ---------------------------
+## Load required libraries
+## ---------------------------
+library(GenomicFeatures)
+library(BSgenome.Hsapiens.UCSC.hg38)
+
+## ---------------------------
+## Load transcript database
+## ---------------------------
+txdb <- loadDb("txdb.gencode26.sqlite")
+
+# Restrict to autosomes
+txdb <- keepSeqlevels(
+  txdb,
+  paste0("chr", 1:22),
+  pruning.mode = "coarse"
+)
+
+## ---------------------------
+## Extract CDS and protein sequences
+## ---------------------------
+cds_seqs <- extractTranscriptSeqs(
+  Hsapiens,
+  cdsBy(txdb, by = "tx", use.names = TRUE)
+)
+
+prot_seqs <- translate(cds_seqs)
+
+# Remove transcript version numbers
+names(prot_seqs) <- sub("\\..*", "", names(prot_seqs))
+df$tx_clean <- sub("\\..*", "", df$txnames)
+
+## ---------------------------
+## Extract protein-level stop annotation
+## ---------------------------
+extract_hgvsp <- function(x) {
+  if (is.na(x)) return(NA_character_)
+  m <- regmatches(x, regexpr("p\\.[^:,; ]+", x))
+  if (length(m) == 0 || m == "") return(NA_character_)
+  m
+}
+
+df$HGVSp <- vapply(df$V3, extract_hgvsp, character(1))
+
+## ---------------------------
+## Initialize output columns
+## ---------------------------
 df$PTC.minus2.aa <- NA_character_
+df$PTC.minus1.aa <- NA_character_
 df$PTC.plus1.aa  <- NA_character_
 df$PTC.plus2.aa  <- NA_character_
 
+## ---------------------------
+## Extract AA context around PTCs
+## ---------------------------
 for (i in seq_len(nrow(df))) {
 
-  ## Match protein sequence by transcript
-  ind <- which(names(prot_seqs) == df$txnames[i])
-  if (length(ind) != 1) next
+  hgvsp <- df$HGVSp[i]
+  if (is.na(hgvsp)) next
+  if (!grepl("^p\\.", hgvsp)) next
 
-  ## Parse annotation string
-  ens.annotated <- df$V3[i]
-  pos <- unlist(strsplit(ens.annotated, ":|,"))
-
-  ## Locate transcript-specific protein annotation
-  g <- grep(df$txnames[i], pos)
-  if (length(g) != 1) next
-
-  prot.pos <- pos[g + 3]
-  if (!grepl("^p\\.", prot.pos)) next
-
-  ## Handle frameshift-style annotations (e.g. p.G123fs_)
-  if (grepl("_", prot.pos)) {
-    prot.pos <- strsplit(prot.pos, "_")[[1]][1]
-  }
-
-  ## Extract amino-acid position
-  aa_pos <- as.numeric(gsub("\\D", "", prot.pos))
+  # Amino-acid position
+  aa_pos <- suppressWarnings(
+    as.integer(sub(".*?([0-9]+).*", "\\1", hgvsp))
+  )
   if (is.na(aa_pos)) next
 
-  prot_seq <- as.character(prot_seqs[ind][1])
+  tx <- df$tx_clean[i]
+  if (!tx %in% names(prot_seqs)) next
+
+  prot_seq <- as.character(prot_seqs[[tx]])
   prot_len <- nchar(prot_seq)
 
-  ## ---------- upstream amino acids ----------
-  if (aa_pos > 1) {
+  ## upstream
+  if (aa_pos > 1)
     df$PTC.minus1.aa[i] <- substr(prot_seq, aa_pos - 1, aa_pos - 1)
-  }
 
-  if (aa_pos > 2) {
+  if (aa_pos > 2)
     df$PTC.minus2.aa[i] <- substr(prot_seq, aa_pos - 2, aa_pos - 2)
-  }
 
-  ## ---------- downstream amino acids ----------
-  if (aa_pos + 1 <= prot_len) {
+  ## downstream (sequence context only)
+  if (aa_pos + 1 <= prot_len)
     df$PTC.plus1.aa[i] <- substr(prot_seq, aa_pos + 1, aa_pos + 1)
-  }
 
-  if (aa_pos + 2 <= prot_len) {
+  if (aa_pos + 2 <= prot_len)
     df$PTC.plus2.aa[i] <- substr(prot_seq, aa_pos + 2, aa_pos + 2)
-  }
 }
 
-## Convert to factors (consistent with downstream modeling)
-df$PTC.minus1.aa <- factor(df$PTC.minus1.aa)
+## ---------------------------
+## Convert to factors (modeling)
+## ---------------------------
 df$PTC.minus2.aa <- factor(df$PTC.minus2.aa)
+df$PTC.minus1.aa <- factor(df$PTC.minus1.aa)
 df$PTC.plus1.aa  <- factor(df$PTC.plus1.aa)
 df$PTC.plus2.aa  <- factor(df$PTC.plus2.aa)
+
+## ---------------------------
+## Sanity check
+## ---------------------------
+colSums(is.na(df[, c(
+  "PTC.minus2.aa",
+  "PTC.minus1.aa",
+  "PTC.plus1.aa",
+  "PTC.plus2.aa"
+)]))
