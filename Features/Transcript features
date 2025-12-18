@@ -24,3 +24,9 @@ df <- merge(
 
 
 #
+# PTC-bearing exon (rename mut.exon for clarity)
+df$PTCBearingExon <- as.integer(df$mut.exon)
+
+# Number of coding exons before and after the PTC-bearing exon
+df$AmountExonsBefore <- df$PTCBearingExon - 1
+df$AmountExonsAfter  <- df$exon_count - df$PTCBearingExon
