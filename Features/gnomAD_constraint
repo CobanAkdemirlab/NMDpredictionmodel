@@ -4,3 +4,17 @@ df$LOEUF_cat <- cut(
   labels = c("Very LoF-intolerant (0-0.2)", "Moderately_constrained (0.2-0.6)", "LoF_tolerant (0.6-2)"),
   right = TRUE
 )
+
+
+
+ind <- which(df$pLI<0.35 )
+df$pLI.cat <- rep('NA',nrow(df))
+df$pLI.cat[ind] <- 'highly tolerant (pLI<0.35)'
+
+
+ind <- which(df$pLI>=0.35 & df$pLI<0.65 )
+df$pLI.cat[ind] <- 'medium tolerant (0.35=<pLI<0.65)'
+
+
+ind <- which(df$pLI>=0.65 )
+df$pLI.cat[ind] <- 'highly intolerant (pLI>=0.65)'
