@@ -1,0 +1,28 @@
+df$log2_CDS <- log2(df$cds_length)
+max_log2 <- max(df$log2_CDS, na.rm = TRUE)
+
+df$cds_length.cut <- cut(
+  df$log2_CDS,
+  breaks = c(0, 10, max_log2),
+  labels = c("0-10", ">10"),
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+# Check distribution
+table(df$cds_length.cut, useNA = "ifany")
+
+
+df$log2_3utr <- log2(df$threeUTR_length)
+max_log2__3utr <- max(df$log2_3utr, na.rm = TRUE)
+
+df$threeUTR_length.cut<- cut(
+  df$log2_3utr,
+  breaks = c(0, 10, max_log2),
+  labels = c("0-10", ">10"),
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+# Check distribution
+table(df$threeUTR_length.cut, useNA = "ifany")
