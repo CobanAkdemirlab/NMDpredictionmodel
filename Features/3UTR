@@ -26,3 +26,17 @@ df$threeUTR_length.cut<- cut(
 
 # Check distribution
 table(df$threeUTR_length.cut, useNA = "ifany")
+
+df$log2_5utr <- log2(df$fiveutr_length)
+max_log2__5utr <- max(df$log2_5utr, na.rm = TRUE)
+
+df$fiveUTR_length.cut<- cut(
+  df$log2_5utr,
+  breaks = c(0, 7, max_log2),
+  labels = c("0-7", ">7"),
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+# Check distribution
+table(df$fiveUTR_length.cut, useNA = "ifany")
