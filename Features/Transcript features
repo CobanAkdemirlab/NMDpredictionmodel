@@ -24,6 +24,15 @@ df <- merge(
   all.x = TRUE
 )
 
+# Assuming you have a column `half_life_PC1_z` in your dataframe `new_df2`
+new_df2$half_life_category <- cut(
+  new_df2$half_life_PC1_z,
+  breaks = c(-Inf, -0.5, 0.5, Inf),
+  labels = c("Low stability", "Intermediate", "High stability")
+)
+
+# Check the distribution
+table(new_df2$half_life_category)
 
 #
 # PTC-bearing exon (rename mut.exon for clarity)
