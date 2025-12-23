@@ -1,6 +1,8 @@
 # Median Expression
 exp <- read.table('GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt',header=TRUE,sep='\t')
 
+> clean_exp <- clean %>%
++     left_join(exp_reduced, by = "gene_id1")
 # mRNAHalfLifeMin (PC)
 library(readxl)
 
