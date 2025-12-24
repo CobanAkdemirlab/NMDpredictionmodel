@@ -1,0 +1,137 @@
+def _rgba(hex_color, alpha):
+    h = hex_color.lstrip('#')
+    r, g, b = (int(h[i:i+2], 16) for i in (0, 2, 4))
+    return f"rgba({r},{g},{b},{alpha})"
+
+def plot_halflifecat(
+    df,
+    feature_col="",
+    yes_label="",
+    no_label="",
+    ejc_col="half_life_category",
+    ejc_order=("Low stability", "Intermediate", "High stability"),
+    title_base="mRNA half-life vs. NMD efficiency",
+    show=True,
+    save_prefix=None
+):
+    # --- data prep ---
+    d = df.copy()
+    d["half_life_category"] = pd.Categorical(d[ejc_col], categories=list(ejc_order), ordered=True)
+    d = d.dropna(subset=["half_life_category", "ALLELE.RAT"]).copy()
+
+    canon = {"Low stability": "#999999", "Intermediate": "#7eab83", "High stability": "#f32c12"}
+
+    pos       = {ejc: i for i, ejc in enumerate(ejc_order)}
+    tickvals  = list(pos.values())
+    ticktext  = list(ejc_order)
+    y_max     = float(d["ALLELE.RAT"].max()) if len(d) else 1.0
+    LABEL_PAD = 0.12
+    YTOP      = y_max + LABEL_PAD
+
+    def add_pairwise_brackets(fig):
+        pairs = [(ejc_order[0], ejc_order[1]),
+                 (ejc_order[0], ejc_order[2]),
+                 (ejc_order[1], ejc_order[2])]
+        base, step = y_max + 0.06, 0.06
+        for k, (a, b) in enumerate(pairs):
+            s1 = d.loc[d["half_life_category"] == a, "ALLELE.RAT"]
+            s2 = d.loc[d["half_life_category"] == b, "ALLELE.RAT"]
+            if len(s1) == 0 or len(s2) == 0:
+                continue
+            _, p = mannwhitneyu(s1, s2, alternative="two-sided")
+            txt = "***" if p < 1e-3 else ("**" if p < 1e-2 else ("*" if p < 5e-2 else "NS"))
+            yb  = base + k*step
+            xa, xb = pos[a], pos[b]
+            fig.add_shape(type="line", x0=xa, x1=xa, y0=y_max, y1=yb)
+            fig.add_shape(type="line", x0=xb, x1=xb, y0=y_max, y1=yb)
+            fig.add_shape(type="line", x0=xa, x1=xb, y0=yb,  y1=yb)
+            fig.add_annotation(x=(xa+xb)/2, y=yb+0.015, text=txt, showarrow=False)
+
+    # ---------- 1) Violin ----------
+    fig_violin = make_subplots(rows=1, cols=1)
+    for ejc in ejc_order:
+        s = d.loc[d["half_life_category"] == ejc, "ALLELE.RAT"]
+        x = pos[ejc]
+        fig_violin.add_trace(go.Violin(
+            x=[x]*len(s), y=s, width=0.25,
+            fillcolor=_rgba(canon[ejc], 0.75), line_color="black",
+            box_visible=True, meanline_visible=True,
+            showlegend=False
+        ))
+        fig_violin.add_annotation(x=x, y=YTOP+0.1, text=f"{int(s.size)}",
+                                  showarrow=False, font=dict(size=12))
+    add_pairwise_brackets(fig_violin)
+    fig_violin.update_xaxes(tickvals=tickvals, ticktext=ticktext, title_text="mRNA half-life")
+    fig_violin.update_yaxes(title_text="NMD efficiency", range=[None, YTOP])
+    fig_violin.update_layout(title=dict(text=title_base, x=0.5), height=500, width=600, showlegend=False)
+
+    # ---------- 2) Box ----------
+    fig_box = make_subplots(rows=1, cols=1)
+    for ejc in ejc_order:
+        s = d.loc[d["half_life_category"] == ejc, "ALLELE.RAT"]
+        x = pos[ejc]
+        fig_box.add_trace(go.Box(
+            x=[x]*len(s), y=s, width=0.25,
+            fillcolor=_rgba(canon[ejc], 0.7), line=dict(color="black"),
+            marker=dict(color=_rgba(canon[ejc], 0.7)),
+            boxpoints="outliers", showlegend=False, opacity=1.0
+        ))
+        fig_box.add_annotation(x=x, y=YTOP+0.1, text=f"{int(s.size)}",
+                               showarrow=False, font=dict(size=12))
+    add_pairwise_brackets(fig_box)
+    fig_box.update_xaxes(tickvals=tickvals, ticktext=ticktext, title_text="mRNA half-life")
+    fig_box.update_yaxes(title_text="NMD efficiency", range=[None, YTOP])
+    fig_box.update_layout(title=dict(text=title_base, x=0.5), height=500, width=600, showlegend=False)
+
+    # ---------- 3) Scatter ----------
+    fig_scatter = make_subplots(rows=1, cols=1)
+    for ejc in ejc_order:
+        rows = d[d["half_life_category"] == ejc]
+        x = pos[ejc]
+        jitter = np.random.normal(0, 0.1, len(rows))
+        fig_scatter.add_trace(
+            go.Scatter(
+                x=np.full(len(rows), x) + jitter,
+                y=rows["ALLELE.RAT"],
+                mode="markers",
+                marker=dict(color=_rgba(canon[ejc], 0.7), size=4,
+                            line=dict(width=1, color="black")),
+                showlegend=False
+            )
+        )
+        # mean line for this group
+        mu = float(rows["ALLELE.RAT"].mean()) if len(rows) else np.nan
+        if np.isfinite(mu):
+            fig_scatter.add_shape(
+                type="line", x0=x-0.35, x1=x+0.35,
+                y0=mu, y1=mu, line=dict(color="red", width=3)
+            )
+
+    # sample-size labels inside the axis
+    for ejc in ejc_order:
+        s = d.loc[d["half_life_category"] == ejc, "ALLELE.RAT"]
+        fig_scatter.add_annotation(
+            x=pos[ejc], y=YTOP + 0.1,
+            text=f"{int(s.size)}", showarrow=False, font=dict(size=12)
+        )
+
+    # same significance brackets
+    add_pairwise_brackets(fig_scatter)
+
+    # headroom for labels/brackets
+    fig_scatter.update_xaxes(tickvals=tickvals, ticktext=ticktext, title_text="mRNA half-life")
+    fig_scatter.update_yaxes(title_text="NMD efficiency", range=[None, YTOP])
+    fig_scatter.update_layout(title=dict(text=title_base, x=0.5), height=500, width=600, showlegend=False)
+
+    # ---------- save/show ----------
+    if save_prefix:
+        fig_violin.write_image(f"{save_prefix}_violin.png",  scale=3, width=1200, height=380)
+        fig_box.write_image(   f"{save_prefix}_box.png",     scale=3, width=1200, height=380)
+        fig_scatter.write_image(f"{save_prefix}_scatter.png",scale=3, width=1200, height=380)
+
+    if show:
+        fig_violin.show(); fig_box.show(); fig_scatter.show()
+
+    return fig_violin, fig_box, fig_scatter
+fv, fb, fs = plot_halflifecat(df, show=False)
+fv.show(); fb.show(); fs.show()
