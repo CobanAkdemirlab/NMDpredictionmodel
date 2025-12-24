@@ -138,6 +138,6 @@ for feat in features_to_plot:
         df,
         feature_col=feat,
         title_base=f"{feat} vs. NMD efficiency",
-        show=False,                      # set to True if you want to view interactively
-        save_prefix=feat                # will save if you have Kaleido installed
+        show=True,        # ← MAKE THIS TRUE to display
+        save_prefix=None  # ← leave as None if not using Kaleido
     )
