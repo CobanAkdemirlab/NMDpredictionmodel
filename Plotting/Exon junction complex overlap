@@ -140,3 +140,19 @@ fv, fb, fs = plot_ejcoverlap(
     title_base="Exon Junction Complex (EJC) Overlap vs. NMD efficiency",
     show=True
 )
+
+#more specific filter (in-frame and not in-frame)
+df2 = df.copy()
+
+df2["frame_aug_bin"] = np.where(
+    df2["aug_frame_status"] == "no_frame_AUG",
+    "no",
+    "yes"
+)
+fv, fb, fs = plot_ejcoverlap(
+    df2,
+    feature_col="frame_aug_bin",
+    ticktext_labels=["no in-frame AUG", "in-frame AUG"],
+    title_base="Frame AUG presence vs. NMD efficiency",
+    show=True
+)
