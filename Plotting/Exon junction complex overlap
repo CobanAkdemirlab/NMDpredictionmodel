@@ -156,3 +156,20 @@ fv, fb, fs = plot_ejcoverlap(
     title_base="Frame AUG presence vs. NMD efficiency",
     show=True
 )
+## First 200 and 100bp overlap
+df_cut = df2[df2["first.200"] == "first 200"].copy()
+fv, fb, fs = plot_ejcoverlap(
+    df_cut,
+    feature_col="frame_aug_bin",
+    ticktext_labels=["no in-frame AUG", "in-frame AUG"],
+    title_base="Frame AUG presence (first 200 bp)",
+    show=True
+)
+df_cut1 = df2[df2["first.100"] == "first 100"].copy()
+fv, fb, fs = plot_ejcoverlap(
+    df_cut1,
+    feature_col="frame_aug_bin",
+    ticktext_labels=["no in-frame AUG", "in-frame AUG"],
+    title_base="Frame AUG presence (first 100 bp)",
+    show=True
+)
