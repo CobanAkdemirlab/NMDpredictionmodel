@@ -141,3 +141,25 @@ for feat in features_to_plot:
         show=True,        # ← MAKE THIS TRUE to display
         save_prefix=None  # ← leave as None if not using Kaleido
     )
+## Phylop
+phylop_features = [
+    "phylop_ejc_100bp_median_cat",
+    "phylop_new3utr_first200_median_cat",
+    "phylop_new3utr_whole_median_cat",
+    "phylop_ptc_100bp_median_cat",
+    "phylop_ptc_to_ejc_median_cat",
+    "phylop_utr5_first200_median_cat",
+    "phylop_old3utr_first200_median_cat",
+    "phylop_old3utr_whole_median_cat",
+    "phylop_tx_whole_median_cat"
+]
+for feat in phylop_features:
+    plot_phastcons_feature(
+        df,
+        feature_col=feat,
+        title_base=f"{feat} vs. NMD efficiency",
+        show=True,         # <- show in notebook
+        save_prefix=None   # <- skip saving since no Kaleido
+    )
+
+
