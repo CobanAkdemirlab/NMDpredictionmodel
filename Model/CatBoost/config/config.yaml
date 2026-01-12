@@ -1,0 +1,121 @@
+# Configuration for NMD Escape Prediction Model
+# Edit paths below to match your local setup
+
+# ==============================================================================
+# DATA PATHS
+# ==============================================================================
+data:
+  # Notebook 01 - Data Loading and Merging
+  enhanced_features: "data/raw/TOPMed_with_enhanced_features.csv"
+  codon_optimality: "data/raw/codon_optimality_txnames.tsv"
+  halflife: "data/raw/TOPMed_df_newwith1095.csv"
+  readthrough: "data/raw/TOPMed_with_hek293t_readthrough_scores.csv"
+  
+  # Intermediate outputs
+  merged: "data/processed/TOPMed_merged_with_codon_optimality.csv"
+  
+  # Notebook 02 - Feature Cleaning
+  cleaned: "data/processed/TOPMed_cleaned_for_training.csv"
+  feature_list: "data/processed/final_feature_list.csv"
+
+# ==============================================================================
+# MODEL CONFIGURATION
+# ==============================================================================
+model:
+  # Target variable
+  target: "NMD.ESCAPEE"
+  
+  # Random seed for reproducibility
+  random_seed: 42
+  
+  # Cross-validation
+  n_folds: 5
+  
+  # CatBoost hyperparameters (optimized)
+  catboost:
+    iterations: 1000
+    learning_rate: 0.03
+    depth: 6
+    l2_leaf_reg: 3
+    border_count: 128
+    bagging_temperature: 1
+    random_strength: 1
+    verbose: False
+    early_stopping_rounds: 50
+
+# ==============================================================================
+# OUTPUT PATHS
+# ==============================================================================
+output:
+  # Base directory for all outputs
+  base_dir: "results"
+  
+  # Model outputs (Notebook 03)
+  models_dir: "models"
+  final_model_cbm: "models/catboost_final_model.cbm"
+  final_model_pkl: "models/catboost_final_model.pkl"
+  cv_models_dir: "models/cv_folds"
+  
+  # Results (Notebook 03)
+  results_dir: "results"
+  cv_predictions: "results/cv_predictions.csv"
+  cv_metrics: "results/cv_metrics.csv"
+  feature_importance: "results/feature_importance_cv_averaged.csv"
+  
+  # Figures (Notebook 03)
+  figures_dir: "results/figures"
+  roc_curve: "results/figures/roc_curve.png"
+  pr_curve: "results/figures/precision_recall_curve.png"
+  confusion_matrix: "results/figures/confusion_matrix.png"
+  feature_importance_plot: "results/figures/feature_importance_top20.png"
+  calibration_curve: "results/figures/calibration_curve.png"
+
+# ==============================================================================
+# FEATURE ENGINEERING
+# ==============================================================================
+features:
+  # Categorical features (for CatBoost)
+  categorical:
+    - "pLI.cat"
+    - "Freq.cat"
+    - "last.EJC"
+    - "loefu_cat"
+    - "PTC.minus1.aa"
+    - "PTC.minus2.aa"
+    - "PTC.plus1.aa"
+    - "PTC.plus2.aa"
+    - "aug_distance_category"
+    - "kozak_strength"
+    - "has_plus1_aug"
+    - "has_plus2_aug"
+    - "aug_frame_status"
+    - "has_ejc_overlap"
+    - "readthrough_category_hek293t"
+  
+  # RBP feature prefixes (protected from correlation removal)
+  rbp_prefixes:
+    - "utr3_all"
+    - "utr3_200"
+    - "newutr_all"
+    - "newutr_200"
+    - "ptc_pm100"
+    - "ejc_pm100"
+    - "ptc_to_ejc"
+  
+  # Correlation threshold for feature removal
+  correlation_threshold: 0.95
+
+# ==============================================================================
+# VISUALIZATION
+# ==============================================================================
+visualization:
+  # Figure settings
+  figure_dpi: 300
+  figure_format: "png"
+  
+  # Style
+  style: "seaborn-v0_8-whitegrid"
+  palette: "Set2"
+  
+  # Feature importance
+  top_n_features: 20
