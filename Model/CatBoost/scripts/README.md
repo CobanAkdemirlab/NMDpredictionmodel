@@ -147,7 +147,7 @@ python 03_model_training.py
 ## Model Performance
 
 Expected performance metrics (approximate):
-- **ROC-AUC:** ~0.77 (out-of-fold)
+- **ROC-AUC:** ~0.75 (out-of-fold)
 - **Optimal threshold:** ~0.38-0.41 (Youden's index)
 
 ## Output Files
@@ -185,14 +185,7 @@ output/figures/visualizations_cv/
     └── shap_feature_importance_rankings.csv
 ```
 
-## Key Features
 
-### Biological Domain Knowledge Integration
-- **Positional features:** Last EJC position, distance to EJC, exon location
-- **RNA-binding proteins:** ~900 RBP motif features (protected from correlation removal)
-- **Conservation:** PhastCons/PhyloP scores
-- **Sequence context:** AU/UC content, codon optimality
-- **Transcript characteristics:** CDS length, UTR features, isoform complexity
 
 ### Model Design Principles
 1. **CatBoost classifier:** Native handling of categorical features and missing values
