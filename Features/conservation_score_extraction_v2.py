@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Median Conservation Score Extraction for Stop-Gain Variants
-Transcript selection: USE txnames only (never transcript_id).
+Transcript selection: Uses txnames column with ENST Transcript ID with version.
 Optional version-free mode using tx_nover or by stripping ENST versions.
 
 Regions computed (per variant):
@@ -20,14 +20,35 @@ import sys
 from pathlib import Path
 
 # =========================
-# CONFIG (edit as needed)
+# CONFIG - EDIT THESE PATHS BEFORE RUNNING
 # =========================
-VARIANT_FILE = "/Users/jschmidt3/Iman_visualizations/TOPMed_dfstopgain_Oct28.csv"
-PHASTCONS_BW = "/Users/jschmidt3/Iman_visualizations/median_sequence_conservation/hg38.phastCons100way.bw"
-PHYLOP_BW    = "/Users/jschmidt3/Iman_visualizations/median_sequence_conservation/hg38.phyloP100way.bw"
-GTF_FILE     = "/Users/jschmidt3/Iman_visualizations/efficient_motif/gencode.v26.primary_assembly.annotation.gtf.gz"
 
-OUTPUT_DIR        = "/Users/jschmidt3/Iman_visualizations/median_sequence_conservation"
+# ==============================================================================
+# REQUIRED: Edit these paths to match your system
+# See REFERENCE_DATA_GUIDE.md for download instructions
+# ==============================================================================
+
+# Input variant file (CSV with contig, position, txnames columns)
+# Example: "my_variants.csv" or "data/TOPMed_variants.csv"
+VARIANT_FILE = "path/to/your/variants.csv"
+
+# Conservation scores (BigWig format, ~10 GB each)
+# Download from: https://hgdownload.soe.ucsc.edu/goldenPath/hg38/phastCons100way/
+#            and: https://hgdownload.soe.ucsc.edu/goldenPath/hg38/phyloP100way/
+# Or use: "reference/conservation/hg38.phastCons100way.bw" if following reference guide
+PHASTCONS_BW = "path/to/hg38.phastCons100way.bw"
+PHYLOP_BW    = "path/to/hg38.phyloP100way.bw"
+
+# Gene annotations (Gencode v26 GTF, can be .gz compressed)
+# Download from: https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_26/
+# Or use: "reference/annotations/gencode.v26.primary_assembly.annotation.gtf.gz"
+GTF_FILE     = "path/to/gencode.v26.primary_assembly.annotation.gtf.gz"
+
+# ==============================================================================
+# OPTIONAL: Customize output paths if desired (will be created automatically)
+# ==============================================================================
+
+OUTPUT_DIR        = "conservation_output"
 BED_FILE          = f"{OUTPUT_DIR}/conservation_regions.bed"
 PHASTCONS_MEDIAN  = f"{OUTPUT_DIR}/phastcons_medians.tsv"
 PHYLOP_MEDIAN     = f"{OUTPUT_DIR}/phylop_medians.tsv"
