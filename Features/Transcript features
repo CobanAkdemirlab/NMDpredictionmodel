@@ -1,8 +1,26 @@
 # Median Expression
 exp <- read.table('GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt',header=TRUE,sep='\t')
+exp$gene_id <- sub("\\..*", "", exp$Name)
 
-> clean_exp <- clean %>%
-+     left_join(exp_reduced, by = "gene_id1")
+# identify tissue columns (everything except Name, Description, gene_id)
+tissue_cols <- setdiff(colnames(exp), c("Name", "Description", "gene_id"))
+
+# compute median expression per gene
+exp$MedianExpression <- apply(
+  exp[, tissue_cols],
+  1,
+  median,
+  na.rm = TRUE
+)
+
+variant.df <- merge(
+  variant.df,
+  exp[, c("gene_id", "MedianExpression")],
+  by = "gene_id",
+  all.x = TRUE
+)
+
+
 # mRNAHalfLifeMin (PC)
 library(readxl)
 
