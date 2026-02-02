@@ -15,7 +15,7 @@ exp$MedianExpression <- apply(
 
 variant.df <- merge(
   variant.df,
-  exp[, c("gene_id", "MedianExpression")],
+  exp[, c("gene_id", "MedianExpression", "Whole.Blood")],
   by = "gene_id",
   all.x = TRUE
 )
