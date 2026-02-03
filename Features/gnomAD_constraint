@@ -1,4 +1,6 @@
 Lof_metrics <- read.table('~/gnomad.v2.1.1.lof_metrics.by_gene.txt',header=TRUE,sep='\t')
+#merging names
+Lof_metrics$gene_id1 <- Lof_metrics$gene_id
 
 topmed <- merge(
   topmed,
