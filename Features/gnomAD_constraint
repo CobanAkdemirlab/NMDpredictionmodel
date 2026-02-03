@@ -1,3 +1,13 @@
+Lof_metrics <- read.table('~/gnomad.v2.1.1.lof_metrics.by_gene.txt',header=TRUE,sep='\t')
+
+topmed <- merge(
+  topmed,
+  Lof_metrics[, c("gene_id1", "pLI", "oe_lof_upper")],
+  by = "gene_id1",
+  all.x = TRUE
+)
+
+### categorization
 df$LOEUF_cat <- cut(
   df$oe_lof_upper,
   breaks = c(-Inf, 0.2, 0.6, Inf),
