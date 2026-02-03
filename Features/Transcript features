@@ -33,14 +33,14 @@ hl3 <- read_excel(file, sheet = "human", skip = 2)
 head(hl3)
 names(hl3)
 
+#merging
+topmed <- merge(
+topmed,
+hl3[, c("gene_id1", "half_life_PC1")],
+by = "gene_id1",
+all.x = TRUE)
 
-df <- merge(
-  df,
-  hl3,
-  by.x = "gene_id1",
-  by.y = "Ensembl Gene Id",
-  all.x = TRUE
-)
+
 
 # Assuming you have a column `half_life_PC1_z` in your dataframe `new_df2`
 new_df2$half_life_category <- cut(
