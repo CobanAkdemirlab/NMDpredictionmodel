@@ -4,8 +4,8 @@ import gzip
 import re
 
 # --- Paths ---
-csv_path = "/Users/iegab/Downloads/TOPMed_df_snv_feb2026.csv"
-gtf_path = "/Users/iegab/Downloads/gencode.v26.primary_assembly.annotation.gtf.gz"
+csv_path = "~/TOPMed_df_snv_feb2026.csv"
+gtf_path = "~/gencode.v26.primary_assembly.annotation.gtf.gz"
 
 # --- Step 1: Load your dataset and get unique transcript names ---
 df = pd.read_csv(csv_path)
