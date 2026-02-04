@@ -1,0 +1,4 @@
+
+
+merged.2$threeUTR_intron <-
+  merged.2$txnames %in% txnames.3utr.introns
