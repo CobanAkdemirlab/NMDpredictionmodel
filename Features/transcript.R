@@ -1,3 +1,36 @@
+#library
+library(readxl)
+library(ggplot2)
+library(gridExtra)
+library(plyr)
+library(dplyr)
+library(reshape2)
+library(parallel)
+library(plotly)
+library (data.table)
+library (ggpubr)
+library(GenomicFeatures)
+library(VariantAnnotation)
+library(BSgenome.Hsapiens.UCSC.hg38)
+
+library(biomaRt)
+library(AnnotationDbi)
+library(RColorBrewer)
+
+
+library(ggsignif)
+library (mltools)
+
+library(hrbrthemes)
+library(viridis)
+library(ggh4x)
+library(wesanderson)
+library(rstatix)
+library(varImp)
+library(tidyverse)
+##
+
+variants.features.fr <- topmed_merged
 
 variants.features.fr$coding.pos <-  sapply(1:nrow(variants.features.fr),function(x)
   
@@ -23,6 +56,7 @@ variants.features.fr$coding.pos <-  sapply(1:nrow(variants.features.fr),function
   
   
 })
+
 
 variants.features.fr$mut.exon <-  sapply(1:nrow(variants.features.fr),function(x) {
   
@@ -96,25 +130,25 @@ variants.features.fr$length.mutated.exon<-  sapply(1:nrow(variants.features.fr),
 
 
 
-
-
-
-
-
-### first 200 bp
-
-variants.features.fr$first.200<-  sapply(1:nrow(variants.features.fr),function(x)
-  
-{
-  if(as.numeric(variants.features.fr$coding.pos[x])<=200){
-    paste('first 200')
+variants.features.fr$first.100 <- sapply(seq_len(nrow(variants.features.fr)), function(x) {
+  val <- as.numeric(variants.features.fr$coding.pos[x])
+  if (!is.na(val) && val <= 100) {
+    "first 100"
   } else {
-    paste('not first 200')
-    
+    "not first 100"
   }
-  
-  
 })
+
+#or
+variants.features.fr$first.200 <- sapply(seq_len(nrow(variants.features.fr)), function(x) {
+  val <- as.numeric(variants.features.fr$coding.pos[x])
+  if (!is.na(val) && val <= 200) {
+    "first 200"
+  } else {
+    "not first 200"
+  }
+})
+
 
 #### long exon 
 
@@ -151,7 +185,6 @@ variants.features.fr$long.exon<-  sapply(1:nrow(variants.features.fr),function(x
 })
 
 
-
 ### PT2 to EJC distance
 
 variants.features.fr$PTC.2.EJC<-  sapply(1:nrow(variants.features.fr),function(x)
@@ -178,12 +211,11 @@ variants.features.fr$PTC.2.EJC<-  sapply(1:nrow(variants.features.fr),function(x
 
 
 
-
 ### PTC.2.end
 variants.features.fr$PTC.2.end <-  sapply(1:nrow(variants.features.fr),function(x)
   
 {
-  variants.features.fr$cds_length.x[x]-as.numeric(variants.features.fr$coding.pos[x])
+  variants.features.fr$cds_length[x]-as.numeric(variants.features.fr$coding.pos[x])
   
 })
 
@@ -267,57 +299,7 @@ variants.features.fr$penultimate.exon <-  sapply(1:nrow(variants.features.fr),fu
 })
 
 
-
-####Full penultimate exon
-
-variants.features.fr$penult.exon <- sapply(1:nrow(variants.features.fr), function(x) {
-  
-  print(x)
-  
-  if (!is.na(variants.features.fr$cds_exons[x]) &  
-      !variants.features.fr$mut.exon[x] == 'NA' &  
-      !is.null(variants.features.fr$mut.exon[x][[1]])) {
-    
-    exon_count <- as.numeric(variants.features.fr$exon_count[x])
-    mut_exon <- as.numeric(variants.features.fr$mut.exon[x][[1]])
-    
-    # If only 1 exon, there's no penultimate exon
-    if (exon_count == 1) {
-      return("not penultimate.exon")
-      
-      # If exactly 2 exons, the first exon is the penultimate exon
-    } else if (exon_count == 2 & mut_exon == 1) {
-      return("penultimate.exon")
-      
-      # If more than 2 exons and mutation is in the second-to-last exon
-    } else if (exon_count > 2 & mut_exon == exon_count - 1) {
-      
-      exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]), ',')))
-      
-      if (length(exon.cor) >= 2) {
-        penultimate_exon_start <- exon.cor[length(exon.cor) - 2]  # Start of penultimate exon
-        penultimate_exon_end <- exon.cor[length(exon.cor) - 1]    # End of penultimate exon
-      }
-      
-      # If the variant is inside the full penultimate exon, mark it
-      if (as.numeric(variants.features.fr$coding.pos[x]) >= penultimate_exon_start &  
-          as.numeric(variants.features.fr$coding.pos[x]) <= penultimate_exon_end) {
-        return("penultimate.exon")
-      } else {
-        return("not penultimate.exon")
-      }
-      
-    } else {
-      return("not penultimate.exon")
-    }
-    
-  } else {
-    return("not penultimate.exon")
-  }
-})
-
-########
-###  get the unique variants look at the distinguishing features
+######## get the unique variants look at the distinguishing features####
 
 variants.features.fr$ALLELE.RAT<- 1-variants.features.fr$altCount/variants.features.fr$totalCount
 variants.features.fr$NMD.ESCAPEE <- rep('NA',nrow(variants.features.fr))
@@ -355,11 +337,6 @@ df <- tissue.var.sub
 freq.fr$key <- freq.fr$Var1
 
 df <- merge(df,freq.fr,by='key')
+#only stopgain variants
+df.sub <- df[which(df$V2=='stopgain'),]
 
-
-
-
-
-
-merged.2$threeUTR_intron <-
-  merged.2$txnames %in% txnames.3utr.introns
