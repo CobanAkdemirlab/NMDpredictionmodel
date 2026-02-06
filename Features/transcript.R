@@ -1,14 +1,3 @@
-txdb <- makeTxDbFromGFF('/Users/iegab/Downloads/gencode.v26.primary_assembly.annotation.gtf.gz')
-# Save as SQLite Database (if needed)
-saveDb(txdb, 'data/txdb.gencode26.sqlite')
-
-
-features.fr <- merged.2
-rm(merged.2)
-
-
-variants.features.fr <- merge(variant.anno.hiqual,features.fr,by='txnames',all.x=TRUE)
-variants.features.fr <- variants.features.fr[!is.na(variants.features.fr$txnames),]
 
 variants.features.fr$coding.pos <-  sapply(1:nrow(variants.features.fr),function(x)
   
