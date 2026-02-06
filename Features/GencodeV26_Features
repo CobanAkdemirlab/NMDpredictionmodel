@@ -1132,9 +1132,9 @@ merged.2[which(merged.2$txnames%in%txnames.5utr.introns),'fiveUTR.introns'] <- '
 ### get the PTBP1 bindings sites in first 200-400 bp of 3'utr 
 utr.resized=resize(utr.grange,width=400,fix='start')
 ### get the PTBP1 binding sites
-PTBP1.1 <- read.table('/Users/iegab/Downloads/ENCFF907HNN.bed.txt',sep='\t')
-PTBP1.2 <- read.table('/Users/iegab/Downloads/ENCFF130PWU.bed.txt',sep='\t')
-PTBP1.3 <- read.table('/Users/iegab/Downloads/ENCFF100OEX.bed.txt',sep='\t')
+PTBP1.1 <- read.table('~/ENCFF907HNN.bed.txt',sep='\t')
+PTBP1.2 <- read.table('~/ENCFF130PWU.bed.txt',sep='\t')
+PTBP1.3 <- read.table('~/ENCFF100OEX.bed.txt',sep='\t')
 
 
 PTBP1 <- rbind(PTBP1.1,PTBP1.2,PTBP1.3)
