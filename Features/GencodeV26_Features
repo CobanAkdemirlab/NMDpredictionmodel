@@ -1150,3 +1150,7 @@ merged.2$threeUTR.PTBP1 <-
   merged.2$txnames %in% txnames.3utr.PTBP1
 
 save(merged.2, file='hg38_seqfeatures_Gencodev26_2026.RData')
+
+#Sanity check:
+dim(merged.2)
+#[1] 91907    61
