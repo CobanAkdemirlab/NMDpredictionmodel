@@ -214,7 +214,8 @@ variants.features.fr$PTC.2.EJC<-  sapply(1:nrow(variants.features.fr),function(x
   
 })
 
-
+variants.features.fr$PTC.2.EJC <- lapply(variants.features.fr$PTC.2.EJC, function(x) if (is.null(x)) NA else x)
+variants.features.fr$PTC.2.EJC <- unlist(variants.features.fr$PTC.2.EJC)
 
 ### PTC.2.end
 variants.features.fr$PTC.2.end <-  sapply(1:nrow(variants.features.fr),function(x)
