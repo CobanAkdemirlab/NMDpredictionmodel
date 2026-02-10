@@ -343,5 +343,14 @@ freq.fr$key <- freq.fr$Var1
 
 df <- merge(df,freq.fr,by='key')
 #only stopgain variants
-df.sub <- df[which(df$V2=='stopgain'),]
+#df.sub <- df[which(df$V2=='stopgain'),]
 
+#checking if multi-alleles
+df$REF_len <- nchar(df$REF_ALLELE)
+df$ALT_len <- nchar(df$ALT_ALLELE)
+
+head(df)
+df_snps <- df[df$REF_len == 1 & df$ALT_len == 1, ]
+
+
+                                         
