@@ -132,7 +132,7 @@ variants.features.fr$length.mutated.exon<-  sapply(1:nrow(variants.features.fr),
   
 })
 
-
+variants.features.fr$length.mutated.exon <- as.numeric(variants.features.fr$length.mutated.exon)
 
 variants.features.fr$first.100 <- sapply(seq_len(nrow(variants.features.fr)), function(x) {
   val <- as.numeric(variants.features.fr$coding.pos[x])
@@ -143,7 +143,7 @@ variants.features.fr$first.100 <- sapply(seq_len(nrow(variants.features.fr)), fu
   }
 })
 
-#or
+#First 200bp
 variants.features.fr$first.200 <- sapply(seq_len(nrow(variants.features.fr)), function(x) {
   val <- as.numeric(variants.features.fr$coding.pos[x])
   if (!is.na(val) && val <= 200) {
@@ -188,7 +188,8 @@ variants.features.fr$long.exon<-  sapply(1:nrow(variants.features.fr),function(x
   
 })
 
-
+variants.features.fr$long.exon <- lapply(variants.features.fr$long.exon , function(x) if (is.null(x)) NA else x)
+variants.features.fr$long.exon <- unlist(variants.features.fr$long.exon)
 ### PT2 to EJC distance
 
 variants.features.fr$PTC.2.EJC<-  sapply(1:nrow(variants.features.fr),function(x)
