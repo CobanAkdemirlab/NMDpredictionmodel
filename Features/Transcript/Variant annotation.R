@@ -30,7 +30,7 @@ library(varImp)
 library(tidyverse)
 ##
 
-variants.features.fr <- topmed_merged
+variants.features.fr <- df
 
 variants.features.fr$coding.pos <-  sapply(1:nrow(variants.features.fr),function(x)
   
