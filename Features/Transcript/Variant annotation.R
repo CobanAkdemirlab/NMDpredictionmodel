@@ -30,8 +30,12 @@ library(varImp)
 library(tidyverse)
 ##
 
-variants.features.fr <- df
+#opitional if re-loading:
+#variants.features.fr <- df
+#new data
 
+ind <- which(is.na(variants.features.fr$cds_exons))
+variants.features.fr <- variants.features.fr[-ind,]
 variants.features.fr$coding.pos <-  sapply(1:nrow(variants.features.fr),function(x)
   
 {
