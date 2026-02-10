@@ -299,7 +299,6 @@ variants.features.fr$penultimate.exon <-  sapply(1:nrow(variants.features.fr),fu
     paste('not penultimate.last50bp')
   }
   
-  
 })
 
 
