@@ -1,0 +1,50 @@
+# Median Expression
+exp <- read.table('GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt',header=TRUE,sep='\t')
+exp$gene_id <- sub("\\..*", "", exp$Name)
+
+# identify tissue columns (everything except Name, Description, gene_id)
+tissue_cols <- setdiff(colnames(exp), c("Name", "Description", "gene_id"))
+
+# compute median expression per gene
+exp$MedianExpression <- apply(
+  exp[, tissue_cols],
+  1,
+  median,
+  na.rm = TRUE
+)
+
+variant.df <- merge(
+  variant.df,
+  exp[, c("gene_id", "MedianExpression", "Whole.Blood")],
+  by = "gene_id",
+  all.x = TRUE
+)
+
+
+# mRNAHalfLifeMin (PC)
+library(readxl)
+
+file <- "13059_2022_2811_MOESM3_ESM.xlsx"
+
+# skip first 2 rows so row 3 becomes the header
+hl3 <- read_excel(file, sheet = "human", skip = 2)
+
+# check the first few columns now
+head(hl3)
+names(hl3)
+
+#merging
+topmed <- merge(
+topmed,
+hl3[, c("gene_id1", "half_life_PC1")],
+by = "gene_id1",
+all.x = TRUE)
+
+
+
+# Assuming you have a column `half_life_PC1_z` in your dataframe `new_df2`
+new_df2$half_life_category <- cut(
+  new_df2$half_life_PC1_z,
+  breaks = c(-Inf, -0.5, 0.5, Inf),
+  labels = c("Low stability", "Intermediate", "High stability")
+)
