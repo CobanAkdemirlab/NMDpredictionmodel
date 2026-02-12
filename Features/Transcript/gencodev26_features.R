@@ -10,8 +10,8 @@ library(GenomicRanges)
 genome <- BSgenome.Hsapiens.UCSC.hg38
 
 ####
-txdb = makeTxDbFromGFF('gencode.v26.primary_assembly.annotation.gtf.gz')
-# optional
+txdb = makeTxDbFromGFF('~/data/gencode.v26.primary_assembly.annotation.gtf.gz')
+# optional loading if dataset is available
 # saveDb(txdb, '~/txdb.gencode26.sqlite')
 #start of the sequencing features extraction
 ensgene <- txdb
@@ -24,6 +24,11 @@ utr.grange <-threeUTRsByTranscript(ensgene, use.names=TRUE)
 fiveutr.grange<-fiveUTRsByTranscript(ensgene, use.names=TRUE)
 introns.grange<- intronsByTranscript(ensgene, use.names=TRUE)
 cds.grange<- cdsBy(ensgene, by="tx",use.names=TRUE)
+exons.grange<-exonsBy(ensgene, use.names=TRUE)
+###get DNAstring of UTR seqs
+cds_seqs <- extractTranscriptSeqs(Hsapiens,
+                                  cdsBy(txdb, by="tx", use.names=TRUE))
+prot_seqs <- translate(cds_seqs)
 
 # Raw exon-level sequences (DNAStringSetList)
 threeutr_parts <- getSeq(BSgenome.Hsapiens.UCSC.hg38, utr.grange)
