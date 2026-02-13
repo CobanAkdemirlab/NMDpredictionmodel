@@ -1,1 +1,245 @@
 #After running gencodeV26 code
+#or re-run again
+
+ensgene <- txdb
+
+
+chr.list <- paste('chr',1:22,sep='')
+ensgene.sub <- keepSeqlevels(ensgene,chr.list)
+ensgene <- ensgene.sub
+#library
+library(BSgenome.Hsapiens.UCSC.hg38)
+
+cds_seqs <- extractTranscriptSeqs(Hsapiens, cdsBy(ensgene, by="tx",use.names=TRUE))
+utr.grange <-threeUTRsByTranscript(ensgene, use.names=TRUE)
+fiveutr.grange<-fiveUTRsByTranscript(ensgene, use.names=TRUE)
+introns.grange<- intronsByTranscript(ensgene, use.names=TRUE)
+exons.grange<-exonsBy(ensgene, use.names=TRUE)
+
+cds.grange<- cdsBy(ensgene, by="tx",use.names=TRUE)
+
+
+###get DNAstring of UTR seqs
+three_utr_seqs <- extractTranscriptSeqs(Hsapiens, utr.grange)
+five_utr_seqs <- extractTranscriptSeqs(Hsapiens, fiveutr.grange)
+cds_seqs <- extractTranscriptSeqs(Hsapiens,
+                                  cdsBy(txdb, by="tx", use.names=TRUE))
+prot_seqs <- translate(cds_seqs)
+
+
+### generate a PTC grange
+
+PTC.df <- data.frame(chr=df$contig,start=df$position,end=df$position)
+PTC.grange <- makeGRangesFromDataFrame(PTC.df)
+#utr.resized=resize(cds.grange$ENST00000002125.8[9:10],width=400,fix='start')
+
+PTC.grange.1 <- PTC.grange+100
+
+cds.grange<- cdsBy(ensgene, by="tx",use.names=TRUE)
+merged <- list()
+for (i in 1:nrow(PTC.df)) {
+  
+  print(i)
+  txname <- df$txnames[i]
+  ind <- which(names(cds.grange) == txname)
+  
+  # If no transcript found, skip to the next iteration
+  if (length(ind) == 0) {
+    next
+  }
+  
+  r.1 <- cds.grange[[ind]]
+  
+  sub.ind <- subjectHits(findOverlaps(PTC.grange[i], r.1))
+  
+  # If no overlaps found, skip to the next iteration
+  if (length(sub.ind) == 0) {
+    next
+  }
+  
+  range <- r.1[sub.ind]
+  
+  # Check if range is valid (not empty)
+  if (length(range) == 0) {
+    next
+  }
+  
+  if (as.character(runValue(strand(range))) == '+') {
+    
+    # Resize range for the positive strand
+    resized.range <- resize(range, width = end(range) - df$position[i] + 1, fix = 'end')
+    
+  } else if (as.character(runValue(strand(range))) == '-') {
+    
+    # Resize range for the negative strand
+    resized.range <- resize(range, width = df$position[i] - start(range) + 1, fix = 'start')
+    
+  } else {
+    # If the strand is not "+" or "-", skip this iteration
+    next
+  }
+  
+  # Update the range in r.1
+  r.1[sub.ind] <- resized.range
+  
+  exon.no <- r.1$exon_rank[sub.ind]
+  
+  exon.ind <- which(r.1$exon_rank >= exon.no)
+  
+  c1 <- r.1[exon.ind]
+  
+  ### Add 3' UTR sequence as well
+  ind.1 <- which(names(utr.grange) == txname)
+  
+  c2 <- NULL
+  if (length(ind.1) > 0) {
+    c2 <- utr.grange[[ind.1]]
+  }
+  
+  merged[[i]] <- c(c1, c2)
+  merged[[i]]$exon_rank <- c(min(merged[[i]]$exon_rank):(min(merged[[i]]$exon_rank) + length(merged[[i]]) - 1))
+}
+# Remove NULL entries from the merged list
+merged <- Filter(Negate(is.null), merged)
+
+# Check if there are valid entries in the merged list
+if (length(merged) == 0) {
+  stop("The 'merged' list is empty after removing NULL entries. No valid GRanges to process.")
+}
+## Then Create a GRangesList from the filtered merged list
+
+PTC_utr_seq.range <- merged
+PTC_utr_seqs <- extractTranscriptSeqs(Hsapiens, GRangesList(merged))
+#use this code for saving
+save(PTC_utr_seqs,file='~/TOPMed_PTC_utr_seqsFeb2026.RData')
+save(PTC_utr_seq.range,file='~/TOPMed_PTC_utr_seq_rangeFeb2026.RData')
+
+df$PTC.minus1.aa <- NULL
+for ( i in 1:nrow(df)){
+  print(i)
+  ind <- which(names(prot_seqs)==df$txnames[i])
+  ens.annotated <- df$V3[i]
+  pos <- strsplit(ens.annotated,':|,')
+  prot.pos <- pos[[1]][grep(df$txnames[i],pos[[1]])+3]
+  if(length(grep('p.',prot.pos))==1) {
+    if (length(grep('_',prot.pos))==1) {
+      prot.pos <- strsplit(prot.pos,'_')[[1]][1]
+      prot_seqs[ind]
+      minus1.pos <- as.numeric(gsub("\\D", "", prot.pos))-1
+      df$PTC.minus1.aa[i] <- substr(as.character(prot_seqs[ind][1]),minus1.pos,minus1.pos)
+    
+    } else {
+      minus1.pos <- as.numeric(gsub("\\D", "", prot.pos))-1
+      df$PTC.minus1.aa[i] <- substr(as.character(prot_seqs[ind][1]),minus1.pos,minus1.pos)
+      
+    }
+  } else 
+  {
+    'NA'
+    
+  }
+  
+  
+
+}
+df$PTC.minus1.aa <- as.factor(df$PTC.minus1.aa)
+
+
+### get the minus 2 sequence of PTC variants for Suja's analysis
+df$PTC.minus2.aa <- NULL
+for ( i in 1:nrow(df)){
+  print(i)
+  ind <- which(names(prot_seqs)==df$txnames[i])
+  ens.annotated <- df$V3[i]
+  pos <- strsplit(ens.annotated,':|,')
+  prot.pos <- pos[[1]][grep(df$txnames[i],pos[[1]])+3]
+  if(length(grep('p.',prot.pos))==1) {
+    if (length(grep('_',prot.pos))==1) {
+      prot.pos <- strsplit(prot.pos,'_')[[1]][1]
+      prot_seqs[ind]
+      minus2.pos <- as.numeric(gsub("\\D", "", prot.pos))-2
+      df$PTC.minus1.aa[i] <- substr(as.character(prot_seqs[ind][1]),minus2.pos,minus2.pos)
+      
+    } else {
+      minus2.pos <- as.numeric(gsub("\\D", "", prot.pos))-2
+      df$PTC.minus2.aa[i] <- substr(as.character(prot_seqs[ind][1]),minus2.pos,minus2.pos)
+      
+    }
+  } else 
+  {
+    'NA'
+    
+  }
+  
+  
+  
+}
+df$PTC.minus2.aa <- as.factor(df$PTC.minus2.aa)
+
+
+### get the plus 1 sequence of PTC variants for Suja's analysis
+df$PTC.plus1.aa <- NULL
+for ( i in 1:nrow(df)){
+  print(i)
+  ind <- which(names(prot_seqs)==df$txnames[i])
+  ens.annotated <- df$V3[i]
+  pos <- strsplit(ens.annotated,':|,')
+  prot.pos <- pos[[1]][grep(df$txnames[i],pos[[1]])+3]
+  if(length(grep('p.',prot.pos))==1) {
+    if (length(grep('_',prot.pos))==1) {
+      prot.pos <- strsplit(prot.pos,'_')[[1]][1]
+      prot_seqs[ind]
+      plus1.pos <- as.numeric(gsub("\\D", "", prot.pos))+1
+      df$PTC.plus1.aa[i] <- substr(as.character(prot_seqs[ind][1]),plus1.pos,plus1.pos)
+      
+    } else {
+      plus1.pos <- as.numeric(gsub("\\D", "", prot.pos))+1
+      df$PTC.plus1.aa[i] <- substr(as.character(prot_seqs[ind][1]),plus1.pos,plus1.pos)
+      
+    }
+  } else 
+  {
+    'NA'
+    
+  }
+  
+  
+  
+}
+df$PTC.plus1.aa <- as.factor(df$PTC.plus1.aa)
+
+
+
+### get the plus 2 sequence of PTC variants for Suja's analysis
+df$PTC.plus2.aa <- NULL
+for ( i in 1:nrow(df)){
+  print(i)
+  ind <- which(names(prot_seqs)==df$txnames[i])
+  ens.annotated <- df$V3[i]
+  pos <- strsplit(ens.annotated,':|,')
+  prot.pos <- pos[[1]][grep(df$txnames[i],pos[[1]])+3]
+  if(length(grep('p.',prot.pos))==1) {
+    if (length(grep('_',prot.pos))==1) {
+      prot.pos <- strsplit(prot.pos,'_')[[1]][1]
+      prot_seqs[ind]
+      plus2.pos <- as.numeric(gsub("\\D", "", prot.pos))+2
+      df$PTC.plus2.aa[i] <- substr(as.character(prot_seqs[ind][1]),plus2.pos,plus2.pos)
+      
+    } else {
+      plus2.pos <- as.numeric(gsub("\\D", "", prot.pos))+2
+      df$PTC.plus2.aa[i] <- substr(as.character(prot_seqs[ind][1]),plus2.pos,plus2.pos)
+      
+    }
+  } else 
+  {
+    'NA'
+    
+  }
+  
+  
+  
+}
+df$PTC.plus2.aa <- as.factor(df$PTC.plus2.aa)
+
+table(df$PTC.plus2.aa, useNA = "always")
+
