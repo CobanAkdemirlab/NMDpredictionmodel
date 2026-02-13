@@ -1000,20 +1000,6 @@ cds_exons <- function(x)
 cds.exons<-mclapply(1:length(cds_seqs), cds_exons,mc.cores=8)
 
 
-cds_length <- function(x)
-{
-  print(x)
-  name <- names(cds_seqs[x])
-  df <- all.df.sub[which(all.df.sub$TXNAME==name),]
-  cds.df<-df[!is.na(df$CDSID),]
-  cds_exon_size<-(cds.df$CDSEND)-(cds.df$CDSSTART)+1
-  s<-sum(cds_exon_size)
-  return(s)
-}
-
-cds.length<- mclapply(1:length(cds_seqs), cds_length,mc.cores=1)
-
-
 NC_length <- function(x)
 {
   print(x)
