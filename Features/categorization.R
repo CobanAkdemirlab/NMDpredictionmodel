@@ -8,7 +8,7 @@ df$PTC.2.start.binning <- cut(
     breaks = breaks_start,
     labels = labels_start,
     include.lowest = TRUE,
-    right = FALSE   # optional, see explanation below
+    right = FALSE   
 )
 #PTC-2-end
 breaks_end <- c(0,100,200,300,700, max(df$PTC.2.start, na.rm = TRUE))
@@ -21,7 +21,7 @@ df$PTC.2.end.binning <- cut(
     breaks = breaks_end,
     labels = labels_end,
     include.lowest = TRUE,
-    right = FALSE   # optional, see explanation below
+    right = FALSE   
 )
 #PTC-2-EJC
 breaks_ejc <- c(0,100,200,300,700, max(df$PTC.2.start, na.rm = TRUE))
@@ -33,7 +33,7 @@ df$PTC.2.EJC.binning <- cut(
     breaks = breaks_ejc,
     labels = labels_ejc,
     include.lowest = TRUE,
-    right = FALSE   # optional, see explanation below
+    right = FALSE   
 )
 #PTC bearing exon
 breaks_exon <- c(0,100,200,300,700,max(df$length.mutated.exon, na.rm = TRUE))
