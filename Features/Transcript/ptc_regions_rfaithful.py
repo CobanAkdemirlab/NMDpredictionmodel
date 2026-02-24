@@ -211,7 +211,7 @@ def _first_ejc_downstream(db, tx, ptc_pos):
                 return (tx.chrom, b.end, strand)
         return None
 
-# ---------- REGION CONSTRUCTION (mirrors your R) ----------
+# ---------- REGION CONSTRUCTION ----------
 def _build_regions_for_variant(genome, db, idx, chrom_raw, pos, txnames):
     out = {}
     chrom = _add_chr(str(chrom_raw))
