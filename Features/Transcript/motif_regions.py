@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-PTC Motif Regions — R-faithful Python implementation (fast, parallel, no row mutation)
 
-This script mirrors the R logic the user provided:
+This script execute the following:
 - Builds per-variant GRanges-like lists using gffutils:
   - CDS from PTC to end + all 3'UTR
   - True 3'UTR extracted from the annotation (or exon–CDS arithmetic fallback)
