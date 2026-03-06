@@ -12,7 +12,7 @@ for (t in 1:100) {
   df.sub.new <- df
   for ( i in 1:nrow(df.sub.new)){
     print(i)
-    ind <- which(fr.var.can$variantID%in%df.sub.new$variantID[i])
+    ind <- which(fr.var.can$variantID%in%df.sub.new$variantID[i]) #fr.var.can file is made at the beginning check Data tab
     ind.1 <- sample(ind,1, replace=F) 
     new.refcount <- fr.var.can$refCount[ind.1]
     new.totalcount <- fr.var.can$totalCount[ind.1]
