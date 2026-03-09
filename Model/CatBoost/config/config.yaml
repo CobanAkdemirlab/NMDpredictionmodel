@@ -6,17 +6,19 @@
 # ==============================================================================
 data:
   # Notebook 01 - Data Loading and Merging
-  enhanced_features: "data/raw/TOPMed_with_enhanced_features.csv"
-  codon_optimality: "data/raw/codon_optimality_txnames.tsv"
-  halflife: "data/raw/TOPMed_df_newwith1095.csv"
-  readthrough: "data/raw/TOPMed_with_hek293t_readthrough_scores.csv"
-  
-  # Intermediate outputs
-  merged: "data/processed/TOPMed_merged_with_codon_optimality.csv"
-  
-  # Notebook 02 - Feature Cleaning
-  cleaned: "data/processed/TOPMed_cleaned_for_training.csv"
-  feature_list: "data/processed/final_feature_list.csv"
+  enhanced_features: "/Users/jschmidt3/Iman_visualizations/spooky_model_v4/TOPMed_stopgain_Mar_6_26.csv"
+  codon_optimality:  "/Users/jschmidt3/Iman_visualizations/spooky_model_v4/annotations/codon_optimality_v4.tsv"
+  readthrough:       "/Users/jschmidt3/Iman_visualizations/spooky_model_v4/annotations/readthrough_v4.csv"
+  ejc:               "/Users/jschmidt3/Iman_visualizations/spooky_model_v4/annotations/ejc_occupancy_v4.tsv"
+  ptc_aug:           "/Users/jschmidt3/Iman_visualizations/spooky_model_v4/annotations/ptc_aug_v4.tsv"
+  conservation:      "/Users/jschmidt3/Iman_visualizations/spooky_model_v4/annotations/variants_with_conservation_medians.csv"
+
+  # Notebook 01 output / Notebook 02 input
+  merged:            "/Users/jschmidt3/Iman_visualizations/spooky_model_v4/TOPMed_merged_v4.csv"
+
+  # Notebook 02 output / Notebook 03 input
+  cleaned:           "/Users/jschmidt3/Iman_visualizations/spooky_model_v4/TOPMed_cleaned_v4.csv"
+  feature_list:      "/Users/jschmidt3/Iman_visualizations/spooky_model_v4/final_feature_list.csv"
 
 # ==============================================================================
 # MODEL CONFIGURATION
@@ -96,7 +98,6 @@ features:
   rbp_prefixes:
     - "utr3_all"
     - "utr3_200"
-    - "newutr_all"
     - "newutr_200"
     - "ptc_pm100"
     - "ejc_pm100"
