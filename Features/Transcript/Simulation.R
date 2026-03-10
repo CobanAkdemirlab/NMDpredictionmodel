@@ -1,4 +1,4 @@
-df <- df[df$Freq.cat=='Rare/Common variants',]
+#df <- df[df$Freq.cat=='Rare/Common variants',]
 
 df.sub.new <- df
 df.sub.new.1 <- NULL
