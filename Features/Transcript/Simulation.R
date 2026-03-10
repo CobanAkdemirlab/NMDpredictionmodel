@@ -13,11 +13,7 @@ for (t in 1:100) {
   for ( i in 1:nrow(df.sub.new)){
     print(i)
     ind <- which(fr.var.can$variantID%in%df.sub.new$variantID[i]) #fr.var.can file is made at the beginning check Data tab
-    #ind <- which(fr.var.can$variantID == df.sub.new$variantID[i]) # use this if you expect no matching
-    
-    #if(length(ind)==0){
-      #print(df.sub.new$variantID[i])
-      #next}
+  
     
     ind.1 <- sample(ind,1, replace=F) 
     new.refcount <- fr.var.can$refCount[ind.1]
