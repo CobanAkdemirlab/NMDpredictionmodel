@@ -5,6 +5,7 @@ df.sub.new.1 <- NULL
 
 #df.sub.new.1 <- NULL
 ### 100 simulations
+missing_variants <- 0
 
 for (t in 1:100) {
   
@@ -12,10 +13,19 @@ for (t in 1:100) {
   df.sub.new <- df
   for ( i in 1:nrow(df.sub.new)){
     print(i)
-    ind <- which(fr.var.can$variantID%in%df.sub.new$variantID[i]) #fr.var.can file is made at the beginning check Data tab
+    #ind <- which(fr.var.can$variantID%in%df.sub.new$variantID[i]) #fr.var.can file is made at the beginning check Data tab
+    ind <- which(fr.var.can$variantID == df.sub.new$variantID[i])
+    
+    if(length(ind)==0){
+      print(df.sub.new$variantID[i])
+      missing_variants <- missing_variants + 1
+      df.sub.new$ALLELE.RAT[i] <- NA
+
+      next
+    }
   
     
-    ind.1 <- sample(ind,1, replace=F) 
+    ind.1 <- sample(ind,1) 
     new.refcount <- fr.var.can$refCount[ind.1]
     new.totalcount <- fr.var.can$totalCount[ind.1]
     new.ALLELE.RAT <- new.refcount / new.totalcount
@@ -26,7 +36,7 @@ for (t in 1:100) {
   df.sub.new.1 <- rbind(df.sub.new,df.sub.new.1)
   
 }
-df.sub <- df.sub.new.1 %>% group_by(key) %>% mutate(ALLELE.RAT = median(ALLELE.RAT)) %>% unique()
+df.sub <- df.sub.new.1 %>% group_by(key) %>% mutate(ALLELE.RAT = median(ALLELE.RAT, na.rm=TRUE)) %>% unique()
 
 hist(df.sub$ALLELE.RAT, main = "Rare/Common (after simulation)")
 #optional
