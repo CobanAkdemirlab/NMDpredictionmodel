@@ -22,7 +22,7 @@ ATTRACT = WORKDIR / "ATtRACT_db_human.txt"
 OUTPUT_DIR = WORKDIR / "TOPMed_March_motif_results"
 
 FIMO_THRESHOLD = 1e-4
-FIMO_TIMEOUT = 600
+FIMO_TIMEOUT = 7200
 
 N_CORES = 6
 
