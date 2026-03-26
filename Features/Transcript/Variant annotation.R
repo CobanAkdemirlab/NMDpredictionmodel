@@ -94,6 +94,7 @@ variants.features.fr$mut.exon <-  sapply(1:nrow(variants.features.fr),function(x
   
   
 })
+variants.features.fr$mut.exon <- as.numeric(variants.features.fr$mut.exon)
 
 
 variants.features.fr$GENE_ID <-  sapply(1:nrow(variants.features.fr),function(x)
