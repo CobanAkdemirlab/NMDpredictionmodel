@@ -61,41 +61,30 @@ variants.features.fr$coding.pos <-  sapply(1:nrow(variants.features.fr),function
   
 })
 
+variants.features.fr$mut.exon <- sapply(1:nrow(variants.features.fr), function(x) {
 
-variants.features.fr$mut.exon <-  sapply(1:nrow(variants.features.fr),function(x) {
-  
-  print(x)
-  
-  if(!is.na(variants.features.fr$coding.pos[x]) & !is.na(variants.features.fr$cds_exons[x]) & !(variants.features.fr$coding.pos[x]=='NA') ){
-    exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]),',')))
-    if (variants.features.fr$coding.pos[x] <= exon.cor[1]) {
-      return (1)
-      
-    } else {
-      
-      if (length(exon.cor)>=2){
-        
-        for (i in 2:length(exon.cor)){
-          
-          if (variants.features.fr$coding.pos[x] >= exon.cor[i-1] & variants.features.fr$coding.pos[x] <= exon.cor[i]) {
-            
-            return (i)
-            
-          }
-        }
-        
-      }
-    } 
-  } else {
+  if (!is.na(variants.features.fr$coding.pos[x]) &&
+      !is.na(variants.features.fr$cds_exons[x])) {
     
-    'NA'
-  } 
-  
-  
-  
-})
-variants.features.fr$mut.exon <- as.numeric(variants.features.fr$mut.exon)
+    exon.cor <- as.numeric(unlist(strsplit(
+      as.character(variants.features.fr$cds_exons[x]), ',')))
+    
+    if (variants.features.fr$coding.pos[x] <= exon.cor[1]) {
+      return(1)
+      
+    } else if (length(exon.cor) >= 2) {
+      
+      for (i in 2:length(exon.cor)) {
+        if (variants.features.fr$coding.pos[x] >= exon.cor[i-1] &&
+            variants.features.fr$coding.pos[x] <= exon.cor[i]) {
+          return(i)
+        }
+      }
+    }
+  }
 
+  return(NA_real_)  # ALWAYS numeric
+})
 
 variants.features.fr$GENE_ID <-  sapply(1:nrow(variants.features.fr),function(x)
   
