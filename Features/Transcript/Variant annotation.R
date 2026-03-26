@@ -96,33 +96,27 @@ variants.features.fr$GENE_ID <-  sapply(1:nrow(variants.features.fr),function(x)
   
 })
 
-### mutated exon
+##mutated exon length
+variants.features.fr$length.mutated.exon <- sapply(1:nrow(variants.features.fr), function(x) {
 
-variants.features.fr$length.mutated.exon<-  sapply(1:nrow(variants.features.fr),function(x)
-{
-  print(x)
-  
-  if(!is.na(variants.features.fr$cds_exons[x]) & !variants.features.fr$mut.exon[x]=='NA' & !is.null(variants.features.fr$mut.exon[x][[1]])){
-    exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]),',')))
+  if (!is.na(variants.features.fr$cds_exons[x]) &&
+      !is.na(variants.features.fr$mut.exon[x])) {
+
+    exon.cor <- as.numeric(unlist(strsplit(
+      as.character(variants.features.fr$cds_exons[x]), ',')))
+
     mut.exon <- variants.features.fr$mut.exon[x]
-    if(mut.exon[[1]] >=2){
-      length.exon=exon.cor[mut.exon[[1]]]-exon.cor[mut.exon[[1]]-1]
-    }
-    else {
-      
-      length.exon=exon.cor[mut.exon[[1]]]
+
+    if (mut.exon >= 2) {
+      return(exon.cor[mut.exon] - exon.cor[mut.exon - 1])
+    } else {
+      return(exon.cor[mut.exon])
     }
   }
-  else {
-    
-    'NA'
-    
-  }
-  
-  
+
+  return(NA_real_)   # ✅ not 'NA'
 })
 
-variants.features.fr$length.mutated.exon <- as.numeric(variants.features.fr$length.mutated.exon)
 
 variants.features.fr$first.100 <- sapply(seq_len(nrow(variants.features.fr)), function(x) {
   val <- as.numeric(variants.features.fr$coding.pos[x])
@@ -336,8 +330,8 @@ df <- merge(df,freq.fr,by='key')
 #df.sub <- df[which(df$V2=='stopgain'),]
 
 #checking if multi-alleles
-df$REF_len <- nchar(df$REF_ALLELE)
-df$ALT_len <- nchar(df$ALT_ALLELE)
+df.sub$REF_len <- nchar(df.sub$REF_ALLELE)
+df.sub$ALT_len <- nchar(df.sub$ALT_ALLELE)
 
 head(df)
 df_snps <- df[df$REF_len == 1 & df$ALT_len == 1, ]
