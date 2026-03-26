@@ -255,4 +255,4 @@ If you use this pipeline, please cite: *(manuscript in preparation)*
 
 ## Contact
 
-Jacob Schmidt — computational biology, NMD prediction pipeline
+Jacob Schmidt — jacob.schmidt@uth.tmc.edu
