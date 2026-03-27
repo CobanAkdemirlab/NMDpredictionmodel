@@ -114,7 +114,7 @@ variants.features.fr$length.mutated.exon <- sapply(1:nrow(variants.features.fr),
     }
   }
 
-  return(NA_real_)   # ✅ not 'NA'
+  return(NA_real_)   
 })
 
 
