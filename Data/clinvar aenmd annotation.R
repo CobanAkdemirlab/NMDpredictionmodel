@@ -18,3 +18,6 @@ df <- as.data.frame(vcf_rng_ann, row.names = NULL, optional = TRUE)
 # Drop columns that cannot be written to CSV
 df <- df[vapply(df, function(x) is.atomic(x) || is.character(x), logical(1))]
 
+system(paste('perl /home/iegab/annovar/convert2annovar.pl -format vcf4 /home/iegab/TOPMed2026/clinVar_v1_stopgain.vcf > /home/iegab/TOPMed2026/clinVar_v1_stopgain.avinput',sep = ''))
+
+system(paste('perl /home/iegab/annovar/annotate_variation.pl -build hg38 -out /home/iegab/TOPMed2026/clinvar_v1_stopgain_gencode_v38 -dbtype ensGene /home/iegab/TOPMed2026/clinVar_v1_stopgain.avinput /home/iegab/annovar/tempdir', sep = ''))
