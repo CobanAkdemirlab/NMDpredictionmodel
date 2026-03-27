@@ -35,4 +35,25 @@ dim(merged_df)
 saveRDS(merged_df, file = "merged_chr1to22_snv_pass_df.rds") 
 
 write.table(merged_df, file = "merged_chr1to22_snv_pass_df.tsv", sep = "\t", row.names = FALSE, quote = FALSE) 
+vcf <- data.frame(
+    CHROM = paste0("chr", df_true$seqnames),
+    POS   = df_true$start,
+    ID    = ".",
+    REF   = df_true$ref,
+    ALT   = df_true$alt,
+    QUAL  = ".",
+    FILTER= ".",
+    INFO  = "."
+)
+
+write.table(vcf,
+            file = "/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_frameshift.vcf",
+            sep = "\t",
+            quote = FALSE,
+            row.names = FALSE,
+            col.names = FALSE)
+system(paste('perl /home/iegab/annovar/convert2annovar.pl -format vcf4 /home/iegab/TOPMed2026/clinVar_v1_stopgain.vcf > /home/iegab/TOPMed2026/clinVar_v1_stopgain.avinput',sep = ''))
+
+system(paste('perl /home/iegab/annovar/annotate_variation.pl -build hg38 -out /home/iegab/TOPMed2026/clinvar_v1_stopgain_gencode_v38 -dbtype ensGene /home/iegab/TOPMed2026/clinVar_v1_stopgain.avinput /home/iegab/annovar/tempdir', sep = ''))
+
 
