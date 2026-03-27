@@ -219,45 +219,50 @@ variants.features.fr$last.exon <- sapply(1:nrow(variants.features.fr), function(
 
 ### penultimate exon rule
 
-variants.features.fr$penultimate.exon <-  sapply(1:nrow(variants.features.fr),function(x)
-  
-{
-  
-  print(x)
-  if(!is.na(variants.features.fr$cds_exons[x]) & !variants.features.fr$mut.exon[x]=='NA' & !is.null(variants.features.fr$mut.exon[x][[1]])) {
-    if(as.numeric(variants.features.fr$exon_count[x])==1) {
-      
-      paste('not penultimate.last50bp')
-    } else if ( as.numeric(variants.features.fr$exon_count[x])>1 & as.numeric(variants.features.fr$exon_count[x])==variants.features.fr$mut.exon[x][[1]]+1) {
-      
-      exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]),',')))
-      if(length (exon.cor)>=2){
-        fifty.pos <- exon.cor[length(exon.cor)-1]-50
-        penultimate.exon.length <- exon.cor[length(exon.cor)-1]-exon.cor[length(exon.cor)-2]
-      }
-      if(length (exon.cor)==2){
-        fifty.pos <- exon.cor[length(exon.cor)-1]-50
-        penultimate.exon.length <- exon.cor[1]
-      }
-      if (as.numeric(variants.features.fr$coding.pos[x])>=fifty.pos & as.numeric(variants.features.fr$coding.pos[x])<=exon.cor[length(exon.cor)-1] & penultimate.exon.length>=50 ){
-        paste('penultimate.last50bp')
-        
-      } else {
-        paste('not penultimate.last50bp')
-        
-      }
-      
-    } else {
-      
-      paste('not penultimate.last50bp')
-      
+variants.features.fr$penultimate.exon <- sapply(1:nrow(variants.features.fr), function(x) {
+
+  if (!is.na(variants.features.fr$cds_exons[x]) &&
+      !is.na(variants.features.fr$mut.exon[x])) {
+
+    exon_count <- as.numeric(variants.features.fr$exon_count[x])
+    mut_exon <- variants.features.fr$mut.exon[x]
+
+    # single exon → not applicable
+    if (exon_count == 1) {
+      return("not penultimate.last50bp")
     }
-    
-  } else {
-    
-    paste('not penultimate.last50bp')
+
+    # check penultimate exon
+    if (exon_count > 1 && exon_count == mut_exon + 1) {
+
+      exon.cor <- as.numeric(unlist(strsplit(
+        as.character(variants.features.fr$cds_exons[x]), ',')))
+
+      if (length(exon.cor) >= 2) {
+
+        penultimate_end <- exon.cor[length(exon.cor) - 1]
+        penultimate_start <- ifelse(length(exon.cor) > 2,
+                                   exon.cor[length(exon.cor) - 2],
+                                   0)
+
+        penultimate_length <- penultimate_end - penultimate_start
+        fifty_pos <- penultimate_end - 50
+
+        coding_pos <- as.numeric(variants.features.fr$coding.pos[x])
+
+        if (coding_pos >= fifty_pos &&
+            coding_pos <= penultimate_end &&
+            penultimate_length >= 50) {
+
+          return("penultimate.last50bp")
+        }
+      }
+    }
+
+    return("not penultimate.last50bp")
   }
-  
+
+  return(NA_character_)
 })
 
 
