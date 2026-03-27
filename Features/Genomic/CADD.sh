@@ -30,4 +30,5 @@ perl table_annovar.pl \
   -operation f,f \
   -nastring . \
   -otherinfo
+#after 
 
