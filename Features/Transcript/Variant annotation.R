@@ -139,8 +139,7 @@ variants.features.fr$first.200 <- sapply(seq_len(nrow(variants.features.fr)), fu
 
 
 #### long exon 
- variants.features.fr$long.exon <- sapply(1:nrow(variants.features.fr), function(x) {
-
+variants.features.fr$long.exon <- sapply(1:nrow(variants.features.fr), function(x) {
   if (!is.na(variants.features.fr$cds_exons[x]) &&
       !is.na(variants.features.fr$mut.exon[x])) {
 
@@ -165,31 +164,22 @@ variants.features.fr$first.200 <- sapply(seq_len(nrow(variants.features.fr)), fu
   return(NA_character_)  # 🔥 critical
 })
 ### PT2 to EJC distance
+variants.features.fr$PTC.2.EJC <- sapply(1:nrow(variants.features.fr), function(x) {
 
-variants.features.fr$PTC.2.EJC<-  sapply(1:nrow(variants.features.fr),function(x)
-  
-{
-  print(x)
-  
-  if(!is.na(variants.features.fr$cds_exons[x]) & !variants.features.fr$mut.exon[x]=='NA' & !is.null(variants.features.fr$mut.exon[x][[1]])) {
-    exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]),',')))
+  if (!is.na(variants.features.fr$cds_exons[x]) &&
+      !is.na(variants.features.fr$mut.exon[x])) {
+
+    exon.cor <- as.numeric(unlist(strsplit(
+      as.character(variants.features.fr$cds_exons[x]), ',')))
+
     mut.exon <- variants.features.fr$mut.exon[x]
-    if(mut.exon[[1]] >=2){
-      length.exon=exon.cor[mut.exon[[1]]]-as.numeric(variants.features.fr$coding.pos[x])
-      
-    }
-    else {
-      
-      length.exon=exon.cor[mut.exon[[1]]]-as.numeric(variants.features.fr$coding.pos[x])
-      
-      
-    }
+
+    return(exon.cor[mut.exon] - as.numeric(variants.features.fr$coding.pos[x]))
   }
-  
+
+  return(NA_real_)
 })
 
-variants.features.fr$PTC.2.EJC <- lapply(variants.features.fr$PTC.2.EJC, function(x) if (is.null(x)) NA else x)
-variants.features.fr$PTC.2.EJC <- unlist(variants.features.fr$PTC.2.EJC)
 
 ### PTC.2.end
 variants.features.fr$PTC.2.end <-  sapply(1:nrow(variants.features.fr),function(x)
@@ -209,30 +199,23 @@ variants.features.fr$PTC.2.start <-  sapply(1:nrow(variants.features.fr),functio
 })
 
 ### last exon rule
+variants.features.fr$last.exon <- sapply(1:nrow(variants.features.fr), function(x) {
 
-variants.features.fr$last.exon <-  sapply(1:nrow(variants.features.fr),function(x)
-  
-{
-  print(x)
-  if(!is.na(variants.features.fr$cds_exons[x])& !variants.features.fr$mut.exon[x]=='NA' & !is.null(variants.features.fr$mut.exon[x][[1]])){
-    if(variants.features.fr$exon_count[x]=='1') {
-      
-      paste('NA')
-    } else if (variants.features.fr$exon_count[x]==variants.features.fr$mut.exon[x]) {
-      
-      paste('lastexon')
+  if (!is.na(variants.features.fr$cds_exons[x]) &&
+      !is.na(variants.features.fr$mut.exon[x])) {
+
+    if (as.numeric(variants.features.fr$exon_count[x]) == 1) {
+      return(NA_character_)
+    } else if (as.numeric(variants.features.fr$exon_count[x]) ==
+               variants.features.fr$mut.exon[x]) {
+      return("lastexon")
+    } else {
+      return("notlastexon")
     }
-    else {
-      
-      paste('notlastexon')
-    }
-    
-    
-    
   }
-  
-  
-})
+
+  return(NA_character_)
+})      
 
 ### penultimate exon rule
 
