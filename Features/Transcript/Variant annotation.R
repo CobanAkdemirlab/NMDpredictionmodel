@@ -139,41 +139,31 @@ variants.features.fr$first.200 <- sapply(seq_len(nrow(variants.features.fr)), fu
 
 
 #### long exon 
+ variants.features.fr$long.exon <- sapply(1:nrow(variants.features.fr), function(x) {
 
-variants.features.fr$long.exon<-  sapply(1:nrow(variants.features.fr),function(x)
-  
-{
-  print(x)
-  
-  if(!is.na(variants.features.fr$cds_exons[x]) & !variants.features.fr$mut.exon[x]=='NA' & !is.null(variants.features.fr$mut.exon[x][[1]])){
-    exon.cor <- as.numeric(unlist(strsplit(as.character(variants.features.fr$cds_exons[x]),',')))
+  if (!is.na(variants.features.fr$cds_exons[x]) &&
+      !is.na(variants.features.fr$mut.exon[x])) {
+
+    exon.cor <- as.numeric(unlist(strsplit(
+      as.character(variants.features.fr$cds_exons[x]), ',')))
+
     mut.exon <- variants.features.fr$mut.exon[x]
-    if(mut.exon[[1]] >=2){
-      length.exon=exon.cor[mut.exon[[1]]]-exon.cor[mut.exon[[1]]-1]
-      if(length.exon>=400){
-        paste('long.exon')
-      } else {
-        paste('not long.exon')
-        
-      }
+
+    if (mut.exon >= 2) {
+      length.exon <- exon.cor[mut.exon] - exon.cor[mut.exon - 1]
     } else {
-      
-      length.exon=exon.cor[mut.exon[[1]]]
-      if(length.exon>=400){
-        paste('long.exon')
-      } else {
-        paste('not long.exon')
-        
-      }
-      
-      
+      length.exon <- exon.cor[mut.exon]
+    }
+
+    if (length.exon >= 400) {
+      return("long.exon")
+    } else {
+      return("not long.exon")
     }
   }
-  
-})
 
-variants.features.fr$long.exon <- lapply(variants.features.fr$long.exon , function(x) if (is.null(x)) NA else x)
-variants.features.fr$long.exon <- unlist(variants.features.fr$long.exon)
+  return(NA_character_)  # 🔥 critical
+})
 ### PT2 to EJC distance
 
 variants.features.fr$PTC.2.EJC<-  sapply(1:nrow(variants.features.fr),function(x)
