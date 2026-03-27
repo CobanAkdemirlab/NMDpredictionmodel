@@ -1,33 +1,13 @@
-x <- readRDS('chr10.rds') 
+setwd("/home/iegab/TOPMed2026/gnomAD")
+files <- list.files(pattern = "\\.rds$", full.names = TRUE)
+gr_list <- lapply(files, readRDS)
+library(GenomicRanges)
 
-x_snv_pass <- x[x$filter == "PASS" & x$type == "snv"] 
-
-df <- as.data.frame(x_snv_pass) 
-
-write.table(df, file = "chr10snv_pass_variants.tsv", sep = "\t", row.names = FALSE, quote = FALSE) 
-
- 
-
-saveRDS(df, file = "chr10snv_pass_variants_df.rds") 
-
-# Create vector of file names 
-
-files <- paste0("chr", 1:22, "snv_pass_variants_df.rds") 
-
+gr_all <- do.call(c, gr_list)
+gr_all
+length(gr_all)
+head(mcols(gr_all))
   
-
-# Read and combine them 
-
-merged_list <- lapply(files, readRDS) 
-
-merged_df <- do.call(rbind, merged_list) 
-
-  
-
-# Check dimensions 
-
-dim(merged_df) 
-
   
 
 # Optionally save 
@@ -52,8 +32,8 @@ write.table(vcf,
             quote = FALSE,
             row.names = FALSE,
             col.names = FALSE)
-system(paste('perl /home/iegab/annovar/convert2annovar.pl -format vcf4 /home/iegab/TOPMed2026/clinVar_v1_stopgain.vcf > /home/iegab/TOPMed2026/clinVar_v1_stopgain.avinput',sep = ''))
+system(paste('perl /home/iegab/annovar/convert2annovar.pl -format vcf4 /home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_frameshift.vcf > /home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_frameshift.avinput',sep = ''))
 
-system(paste('perl /home/iegab/annovar/annotate_variation.pl -build hg38 -out /home/iegab/TOPMed2026/clinvar_v1_stopgain_gencode_v38 -dbtype ensGene /home/iegab/TOPMed2026/clinVar_v1_stopgain.avinput /home/iegab/annovar/tempdir', sep = ''))
+system(paste('perl /home/iegab/annovar/annotate_variation.pl -build hg38 -out /home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_frameshift_gencode_v38 -dbtype ensGene /home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_frameshift.avinput /home/iegab/annovar/tempdir', sep = ''))
 
 
