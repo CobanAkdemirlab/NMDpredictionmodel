@@ -7,7 +7,7 @@ gr_all <- do.call(c, gr_list)
 gr_all
 length(gr_all)
 head(mcols(gr_all))
-  
+saveRDS(gr_all, "/home/iegab/TOPMed2026/gnomAD/gnomAD_all_aenmd.rds")
   
 
 # Optionally save 
