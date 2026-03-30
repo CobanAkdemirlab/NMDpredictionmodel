@@ -9,7 +9,56 @@ length(gr_all)
 head(mcols(gr_all))
 saveRDS(gr_all, "/home/iegab/TOPMed2026/gnomAD/gnomAD_all_aenmd.rds")
   
-
+df_gnomad_snv <- df_gnomad_ptc[which(df_gnomad_ptc$type=='snv'),]
+vcf_gnomad <- data.frame(
+    CHROM  = paste0("chr", df_gnomad_snv$seqnames),
+    POS    = df_gnomad_snv$start,
+    ID     = ".",
+    REF    = as.character(df_gnomad_snv$ref),
+    ALT    = as.character(df_gnomad_snv$alt),
+    QUAL   = ".",
+    FILTER = "PASS",
+    INFO   = ".",
+    stringsAsFactors = FALSE
+)
+writeLines(
+    c("##fileformat=VCFv4.2",
+      "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO"),
+    "/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain.vcf"
+)
+write.table(
+    vcf_gnomad,
+    file = "/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain.vcf",
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE,
+    col.names = FALSE,
+    append = TRUE
+)
+system(paste(
+    'perl /home/iegab/annovar/convert2annovar.pl -format vcf4',
+    '/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain.vcf',
+    '>',
+    '/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain.avinput'
+))
+system(paste(
+    'perl /home/iegab/annovar/annotate_variation.pl',
+    '-build hg38',
+    '-out /home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_gencode_v38',
+    '-dbtype ensGene',
+    '/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain.avinput',
+    '/home/iegab/annovar/tempdir'
+))
+fr.var.can <- data.frame(
+    contig      = paste0("chr", df_gnomad_snv$seqnames),
+    position    = df_gnomad_snv$start,
+    REF_ALLELE  = as.character(df_gnomad_snv$ref),
+    ALT_ALLELE  = as.character(df_gnomad_snv$alt),
+    key = as.character(df_gnomad_snv$key2),
+    variantID = df_gnomad_snv$variantID,
+    stringsAsFactors = FALSE
+)
+save(fr.var.can, file = "/home/iegab/TOPMed2026/gnomAD/gnomAD_fr.var.can_snv.RData")
 # Optionally save 
 
 saveRDS(merged_df, file = "merged_chr1to22_snv_pass_df.rds") 
