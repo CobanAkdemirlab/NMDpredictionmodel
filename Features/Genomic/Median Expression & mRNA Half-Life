@@ -24,10 +24,13 @@ variant.df <- merge(
 # mRNAHalfLifeMin (PC)
 library(readxl)
 
-file <- "13059_2022_2811_MOESM3_ESM.xlsx"
 
+file <- "/location/13059_2022_2811_MOESM3_ESM.xlsx"
+
+# list sheets first
+excel_sheets(file)
 # skip first 2 rows so row 3 becomes the header
-hl3 <- read_excel(file, sheet = "human", skip = 2)
+hl3 <- read_excel(file, sheet = "human", skip = 1)
 
 # check the first few columns now
 head(hl3)
@@ -35,10 +38,12 @@ names(hl3)
 
 #merging
 topmed <- merge(
-topmed,
-hl3[, c("gene_id1", "half_life_PC1")],
-by = "gene_id1",
-all.x = TRUE)
+    df,
+    hl3[, c("Ensembl Gene Id", "half-life (PC1)")],
+    by.x = "ensembl_gene_id",
+    by.y = "Ensembl Gene Id",
+    all.x = TRUE
+)
 
 
 
