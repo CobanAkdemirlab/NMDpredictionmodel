@@ -45,6 +45,9 @@ topmed <- merge(
     all.x = TRUE
 )
 
+breaks <- quantile(hl_pc1$half_life_pc1_z,
+          probs = c(0, 1/3, 2/3, 1),
+          na.rm =TRUE)
 
 
 # Assuming you have a column `half_life_PC1_z` in your dataframe `new_df2`
