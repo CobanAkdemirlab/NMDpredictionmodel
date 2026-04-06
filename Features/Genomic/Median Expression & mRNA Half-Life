@@ -1,3 +1,16 @@
+#ENSG 
+
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("biomaRt")
+library(biomaRt)
+mart <- useEnsembl("ensembl",dataset="hsapiens_gene_ensembl")
+BM.info <- getBM(attributes=c("ensembl_gene_id","ensembl_transcript_id","hgnc_symbol","transcript_is_canonical"),mart=mart)
+BM.info.can <- BM.info[which(BM.info$transcript_is_canonical=='1'),]
+df <- merge(df, BM.info.can, by.x='txnames', by.y='ensembl_transcript_id', all.x=TRUE)
+
+
 # Median Expression
 exp <- read.table('GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt',header=TRUE,sep='\t')
 exp$gene_id <- sub("\\..*", "", exp$Name)
@@ -20,6 +33,7 @@ variant.df <- merge(
   all.x = TRUE
 )
 
+df$MedianExpression_log2 <- log2(df$MedianExpression + 1)
 
 # mRNAHalfLifeMin (PC)
 library(readxl)
