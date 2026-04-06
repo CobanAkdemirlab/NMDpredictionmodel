@@ -32,12 +32,14 @@ excel_sheets(file)
 # skip first 2 rows so row 3 becomes the header
 hl3 <- read_excel(file, sheet = "human", skip = 1)
 
-# check the first few columns now
-head(hl3)
-names(hl3)
+
+breaks <- quantile(hl_pc1$half_life_pc1_z,
+          probs = c(0, 1/3, 2/3, 1),
+          na.rm =TRUE)
+
 
 #merging
-topmed <- merge(
+df_merged <- merge(
     df,
     hl3[, c("Ensembl Gene Id", "half-life (PC1)")],
     by.x = "ensembl_gene_id",
@@ -45,14 +47,19 @@ topmed <- merge(
     all.x = TRUE
 )
 
-breaks <- quantile(hl_pc1$half_life_pc1_z,
-          probs = c(0, 1/3, 2/3, 1),
-          na.rm =TRUE)
-
-
-# Assuming you have a column `half_life_PC1_z` in your dataframe `new_df2`
-new_df2$half_life_category <- cut(
-  new_df2$half_life_PC1_z,
-  breaks = c(-Inf, -0.5, 0.5, Inf),
-  labels = c("Low stability", "Intermediate", "High stability")
-)
+df_merged <- df_merged %>%
+    mutate(
+        half_life_pc1_z = as.numeric(scale(`half-life (PC1)`))
+    )
+breaks <- quantile(df_merged$half_life_pc1_z,
+                   probs = c(0, 1/3, 2/3, 1),
+                   na.rm = TRUE)
+df_merged <- df_merged %>%
+    mutate(
+        HL_bin = cut(
+            half_life_pc1_z,
+            breaks = breaks,
+            labels = c("short", "medium", "long"),
+            include.lowest = TRUE
+        )
+    )
