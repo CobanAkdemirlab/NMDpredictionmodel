@@ -8,6 +8,8 @@ library(biomaRt)
 mart <- useEnsembl("ensembl",dataset="hsapiens_gene_ensembl")
 BM.info <- getBM(attributes=c("ensembl_gene_id","ensembl_transcript_id","hgnc_symbol","transcript_is_canonical"),mart=mart)
 BM.info.can <- BM.info[which(BM.info$transcript_is_canonical=='1'),]
+#df$TxName <- sub("\\..*$","", df$txnames)
+
 df <- merge(df, BM.info.can, by.x='txnames', by.y='ensembl_transcript_id', all.x=TRUE)
 
 
