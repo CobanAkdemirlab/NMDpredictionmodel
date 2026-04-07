@@ -17,3 +17,12 @@ vcf_gregor <- data.frame(
     INFO   = ".",
     stringsAsFactors = FALSE
 )
+write.table(
+    vcf_gregor,
+    file = "/home/iegab/TOPMed2026/GREGoR_v1_stopgain.vcf",
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE,
+    col.names = FALSE,
+    append = TRUE
+)
