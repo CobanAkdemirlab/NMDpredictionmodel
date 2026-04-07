@@ -26,3 +26,9 @@ write.table(
     col.names = FALSE,
     append = TRUE
 )
+system(paste(
+    'perl /home/iegab/annovar/convert2annovar.pl -format vcf4',
+    '/home/iegab/TOPMed2026/GREGoR_v1_stopgain.vcf',
+    '>',
+    '/home/iegab/TOPMed2026/GREGoR_v1_stopgain.avinput'
+))
