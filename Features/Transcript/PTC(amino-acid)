@@ -4,9 +4,13 @@ if (!require("BiocManager", quietly=TRUE))
     install.packages("BiocManager")
 
 BiocManager::install("txdbmaker")
+library(txdbmaker)
+
+txdb <- makeTxDbFromGFF("gencode.v45.primary_assembly.annotation.gtf.gz")
 library(AnnotationDbi)
 
-txdb = makeTxDbFromGFF('gencode.v26.primary_assembly.annotation.gtf.gz')
+saveDb(txdb, '~/location/txdb.gencode45.sqlite')
+
 
 ensgene <- txdb
 
