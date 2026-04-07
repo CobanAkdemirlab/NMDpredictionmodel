@@ -1,5 +1,9 @@
 #After running gencodeV26 code
 #or re-run again
+if (!require("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("txdbmaker")
 library(AnnotationDbi)
 
 txdb = makeTxDbFromGFF('gencode.v26.primary_assembly.annotation.gtf.gz')
