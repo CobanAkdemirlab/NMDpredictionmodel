@@ -1,5 +1,8 @@
 #After running gencodeV26 code
 #or re-run again
+library(AnnotationDbi)
+
+txdb = makeTxDbFromGFF('gencode.v26.primary_assembly.annotation.gtf.gz')
 
 ensgene <- txdb
 
