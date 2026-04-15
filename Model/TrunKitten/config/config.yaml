@@ -1,0 +1,33 @@
+# Model/TrunKitten/config/config.yaml
+# Resolved relative to Model/TrunKitten/
+
+data:
+  # TrunCat's notebook 02 output — shared, not duplicated
+  cleaned: "../TrunCat/data/TOPMed_cleaned.csv"
+
+shap:
+  # Snapshot of the SHAP rankings that defined the top-10 selection
+  rankings: "inputs/shap_feature_importance_rankings.csv"
+
+model:
+  target: NMD.ESCAPEE
+  random_seed: 42
+  n_folds: 5
+  catboost:
+    iterations: 1922
+    learning_rate: 0.01556
+    depth: 7
+    l2_leaf_reg: 6.89
+    bagging_temperature: 0.047
+    random_strength: 0.062
+    border_count: 227
+    min_data_in_leaf: 23
+
+features:
+  categorical:
+    - last.EJC          # the one categorical feature in the top-10
+
+output:
+  models_dir:  "model"
+  results_dir: "results"
+  figures_dir: "results/figures"
