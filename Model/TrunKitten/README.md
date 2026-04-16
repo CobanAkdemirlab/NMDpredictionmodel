@@ -1,7 +1,7 @@
 # TrunKitten
 
 A reduced version of [TrunCat](../TrunCat/) using only the 10 most informative
-transcript features (by mean |SHAP|). Designed for prediction on external
+features (by mean |SHAP|). Designed for prediction on external
 cohorts where reproducing the full ~730-feature annotation pipeline is
 impractical.
 
@@ -27,7 +27,7 @@ impractical.
 TrunKitten is trained on the same TOPMed variant set as TrunCat
 (`../TrunCat/data/TOPMed_cleaned.csv`), restricted to the top 10 features by
 SHAP importance from TrunCat's CV-averaged ranking. Hyperparameters match
-TrunCat v4.1. It trades some predictive performance for substantially lower
+TrunCat v4.1. It retains 99% of predictive performance with substantially lower
 annotation burden on new inputs.
 
 For the full model and feature engineering pipeline, see [`../TrunCat/`](../TrunCat/).
