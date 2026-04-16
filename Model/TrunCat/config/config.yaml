@@ -1,28 +1,32 @@
-# Configuration for NMD Escape Prediction Model
+# Configuration for TrunCat (TRUNcation-aware Classifier using Annotated Transcripts)
+# Full-model training and evaluation workflow (formerly: spooky_model / CatBoost)
 # ----------------------------------------------------------------------------
 # SETUP INSTRUCTIONS
 # Place your input data files in the locations specified under data: below,
 # or edit the paths to match your local directory layout.
 #
-# Expected project structure (relative to repo root):
+# Expected project structure (relative to Model/TrunCat/):
 #
-#   NMD-escape-prediction/
-#   ├── config/
-#   │   └── config.yaml          <- this file
-#   ├── notebooks/
-#   │   ├── 01_data_loading_and_merging.ipynb
-#   │   ├── 02_feature_cleaning_and_selection.ipynb
-#   │   └── 03_model_training.ipynb
-#   ├── data/
-#   │   ├── README.md            <- instructions for obtaining input data
-#   │   ├── TOPMed_stopgain.csv  <- TOPMed stopgain variants (not distributed)
-#   │   └── annotations/
-#   │       ├── codon_optimality.tsv
-#   │       ├── readthrough.csv
-#   │       ├── ejc_occupancy.tsv
-#   │       ├── ptc_aug.tsv
-#   │       └── conservation_medians.csv
-#   └── results/                 <- created automatically on first run
+#   NMDpredictionmodel/
+#   └── Model/
+#       └── TrunCat/
+#           ├── config/
+#           │   └── config.yaml          <- this file
+#           ├── notebooks/
+#           │   ├── 01_data_loading_and_merging.ipynb
+#           │   ├── 02_feature_cleaning_and_selection.ipynb
+#           │   └── 03_model_training.ipynb
+#           ├── data/
+#           │   ├── README.md
+#           │   ├── TOPMed_stopgain.csv  <- TOPMed stopgain variants (not distributed)
+#           │   └── annotations/
+#           │       ├── codon_optimality.tsv
+#           │       ├── readthrough.csv
+#           │       ├── ejc_occupancy.tsv
+#           │       ├── ptc_aug.tsv
+#           │       └── conservation_medians.csv
+#           ├── results/                 <- created automatically on first run
+#           └── scripts/
 #
 # NOTE: All paths are relative to the repo root. The notebooks resolve them
 # using BASE_DIR = Path(config_path).parent.parent so they work regardless
@@ -79,13 +83,10 @@ model:
 # OUTPUT PATHS
 # ==============================================================================
 output:
-  # Base directory for all outputs (created automatically)
-  base_dir: "results"
-
   # Model outputs (Notebook 03)
-  models_dir: "results/models"
-  final_model_cbm: "results/models/catboost_final_model.cbm"
-  final_model_pkl: "results/models/catboost_final_model.pkl"
+  models_dir: "model"
+  final_model_cbm: "model/truncat.cbm"
+  final_model_pkl: "model/truncat.pkl"
   cv_models_dir: "results/models/cv_folds"
 
   # Results (Notebook 03)

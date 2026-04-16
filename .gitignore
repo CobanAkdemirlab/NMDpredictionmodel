@@ -42,9 +42,7 @@ Model/TrunCat/data/annotations/*
 !Model/TrunCat/data/annotations/README.md
 
 # TrunCat generated outputs
-Model/TrunCat/results/
 Model/TrunCat/outputs/
-Model/TrunCat/figures/
 
 # TrunKitten local input data (keep README + synthetic example only)
 Model/TrunKitten/inputs/*
@@ -54,12 +52,20 @@ Model/TrunKitten/inputs/*
 Model/TrunKitten/data/*
 !Model/TrunKitten/data/README.md
 
-# TrunKitten generated outputs
-Model/TrunKitten/results/
-Model/TrunKitten/outputs/
-Model/TrunKitten/figures/
 
 # Notebook-generated result trees elsewhere in repo
 notebooks/results/
 results/figures/
 predict/overlap_audit/
+
+# CatBoost training artifacts (transient, regenerated on each train)
+catboost_info/
+
+# Model results (regenerable; not committed)
+
+Model/TrunCat/results/
+Model/TrunKitten/results/
+Model/TrunKitten/model/cv_folds/
+
+# CatBoost training artifacts (transient, regenerated on each train)
+catboost_info/
