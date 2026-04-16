@@ -62,12 +62,12 @@ df_merged <- merge(
     by.y = "Ensembl Gene Id",
     all.x = TRUE
 )
-library(janitor)
-df_merged <- clean_names(df_merged)
-df_merged <- df_merged %>%
-    mutate(
-        half_life_pc1_z = as.numeric(scale(half_life_pc1))
-    )
+#scaling half-life PC1
+mean_ref <- mean(df_merged$half_life_PC1, na.rm = TRUE)
+sd_ref   <- sd(df_merged$half_life_PC1, na.rm = TRUE)
+
+df_merged$half_life_pc1_z <- (df_merged$half_life_PC1 - mean_ref) / sd_ref
+
 breaks <- quantile(df_merged$half_life_pc1_z,
                    probs = c(0, 1/3, 2/3, 1),
                    na.rm = TRUE)
