@@ -1,0 +1,71 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS / misc
+Thumbs.db
+
+# Repo-specific local data / generated outputs
+
+# TrunCat local input data (keep README files only)
+Model/TrunCat/data/*
+!Model/TrunCat/data/README.md
+!Model/TrunCat/data/annotations/
+Model/TrunCat/data/annotations/*
+!Model/TrunCat/data/annotations/README.md
+
+# TrunCat generated outputs
+Model/TrunCat/outputs/
+
+# TrunKitten local input data (keep README + synthetic example only)
+Model/TrunKitten/inputs/*
+!Model/TrunKitten/inputs/README.md
+!Model/TrunKitten/inputs/variants.example.tsv
+
+Model/TrunKitten/data/*
+!Model/TrunKitten/data/README.md
+
+
+# Notebook-generated result trees elsewhere in repo
+notebooks/results/
+results/figures/
+predict/overlap_audit/
+
+# CatBoost training artifacts (transient, regenerated on each train)
+catboost_info/
+
+# Model results (regenerable; not committed)
+
+Model/TrunCat/results/
+Model/TrunKitten/results/
+Model/TrunKitten/model/cv_folds/
+
+# CatBoost training artifacts (transient, regenerated on each train)
+catboost_info/

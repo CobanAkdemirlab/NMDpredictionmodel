@@ -1,0 +1,34 @@
+# TrunKitten annotation pipeline — config
+# (implementation package: minicat; entry point: python -m minicat.cli)
+# ----------------------------------------------------------------------------
+# SETUP INSTRUCTIONS
+# Place your reference files in inputs/ (or edit paths to point elsewhere).
+# See inputs/README.md for required file versions and download sources:
+#   - GTF:       Gencode v26 (hg38) — matches TrunCat training
+#   - FASTA:     hg38 primary assembly
+#   - PhastCons: 100-way vertebrate, hg38 bigWig
+#   - PhyloP:    100-way vertebrate, hg38 bigWig
+#   - Half-life: Agarwal & Kelley (2022) supplementary table S2
+# ----------------------------------------------------------------------------
+paths:
+  variants:   inputs/variants.tsv           # required columns: variant_id, contig, position, refAllele, altAllele, gene, txnames
+  gtf:        inputs/annotation.gtf.gz
+  fasta:      inputs/genome.fa              # requires .fai alongside (samtools faidx)
+  phastcons:  inputs/phastcons.bw           # BigWig strongly preferred; .bed.gz also accepted
+  phylop:     inputs/phylop.bw
+  halflife:   inputs/half_life_pc1.xlsx
+  halflife_sheet: 0                         # sheet name or index
+  halflife_ensg_col: Ensembl Gene Id                # column in Excel containing ENSG
+  halflife_value_col: half_life_PC1         # column with the PC1 value
+  halflife_symbol_col: Gene name         # column with gene symbol (fallback for annotation-version drift); set to "" to disable
+
+  out_features:  outputs/annotated.tsv
+  out_qc:        outputs/qc_report.tsv
+  log:           outputs/run.log
+
+options:
+  chr_style: auto         # auto | with_chr | no_chr — how to harmonise chrom names against BigWig/GTF
+  strip_versions: true    # strip '.N' suffix from ENST/ENSG before matching
+  n_workers: 4            # number of parallel workers for per-variant annotation
+  cds_last_window: 200    # for cdsseq_AUcontentlast200
+  new3utr_window: 200     # for new3utr_first200
