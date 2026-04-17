@@ -30,5 +30,21 @@ perl table_annovar.pl \
   -operation f,f \
   -nastring . \
   -otherinfo
-#after 
+#merge by key (Chr, Start, End, Ref, 	Alt, REVEL_score, CADD_raw, CADD_phred, gnomAD_exome_ALL== chr7:127588544_A>T)
+cadd$key <- with(cadd,
+  paste0("chr", Chr, ":", Start, "_", Ref, ">", Alt)
+)
+cadd_to_merge <- cadd[, c(
+  "key",
+  "REVEL_score",
+  "CADD_raw",
+  "CADD_phred",
+  "gnomAD_exome_ALL"
+)]
+df.merged <- merge(
+  df,
+  cadd_to_merge,
+  by = "key",
+  all.x = TRUE
+)
 

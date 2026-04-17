@@ -20,13 +20,13 @@ df$mut.exon <- as.numeric(df$mut.exon)
 # Calculate EJC.downstream after making sure mut.exon is numeric
 df$EJC.downstream <- df$exon_count - df$mut.exon
 #categorization
-df$EJC.downstream.cut <- rep ('NA',nrow(df))
+df$EJC.downstream.cut <- cut(
+    df$EJC.downstream,
+    breaks = c(-Inf, 2, 5, 9, 14, Inf),
+    labels = c("0-2", "3-5", "6-9", "10-14", ">14"),
+    right = TRUE
+)
 
-df$EJC.downstream.cut[which(df$EJC.downstream==0)] <- '0'
-df$EJC.downstream.cut[which(df$EJC.downstream==1)] <- '1'
-df$EJC.downstream.cut[which(df$EJC.downstream==2)] <- '2'
-df$EJC.downstream.cut[which(df$EJC.downstream==3)] <- '3'
-df$EJC.downstream.cut[which(df$EJC.downstream>3)] <- '>3'
 table(df$EJC.downstream.cut)
 
 #### exception 1 ### the ones in the last exon or penutimate.last50bp
