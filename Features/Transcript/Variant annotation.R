@@ -265,7 +265,33 @@ variants.features.fr$penultimate.exon <- sapply(1:nrow(variants.features.fr), fu
   return(NA_character_)
 })
 
+### if necessary
+variants.features.fr$penultimate.full <-  sapply(1:nrow(variants.features.fr), function(x)
+{
+  print(x)
 
+  if(!is.na(variants.features.fr$cds_exons[x]) & 
+     !variants.features.fr$mut.exon[x]=='NA' & 
+     !is.null(variants.features.fr$mut.exon[x][[1]])) {
+
+    if(as.numeric(variants.features.fr$exon_count[x]) == 1) {
+
+      paste('not penultimate')
+
+    } else if (as.numeric(variants.features.fr$exon_count[x]) == variants.features.fr$mut.exon[x][[1]] + 1) {
+
+      paste('penultimate')
+
+    } else {
+
+      paste('not penultimate')
+    }
+
+  } else {
+
+    paste('not penultimate')
+  }
+})
 ######## get the unique variants look at the distinguishing features####
 
 variants.features.fr$ALLELE.RAT<- 1-variants.features.fr$altCount/variants.features.fr$totalCount

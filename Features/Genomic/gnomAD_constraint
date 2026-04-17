@@ -5,7 +5,7 @@ Lof_metrics$gene_id1 <- Lof_metrics$gene_id
 
 topmed <- merge(
   topmed,
-  Lof_metrics[, c("gene_id1", "pLI", "oe_lof_upper")],
+  Lof.sub,
   by = "gene_id1",
   all.x = TRUE
 )
