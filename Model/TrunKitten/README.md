@@ -2,7 +2,7 @@
 
 A reduced version of [TrunCat](../TrunCat/) using only the 10 most informative
 features (by mean |SHAP|). Designed for prediction on external cohorts where
-reproducing the full ~730-feature annotation pipeline is impractical.
+reproducing the full ~850-feature annotation pipeline is impractical.
 
 ## Layout
 
