@@ -1,5 +1,16 @@
 #aenmd
+library(aenmd)
+library(GenomicRanges)
+library(GenomeInfoDb)
 
+
+vcf_file <- "filtered_oc_base_matches.unique.vcf"
+vcf <- aenmd:::parse_vcf_VariantAnnotation(vcf_file)
+vcf_rng <- vcf$vcf_rng
+seqlevels(vcf_rng) <- sub("^chr", "", seqlevels(vcf_rng))
+seqnames(vcf_rng) <- sub("^chr", "", as.character(seqnames(vcf_rng)))
+vcf_rng_fil <- process_variants(vcf_rng)
+length(vcf_rng_fil)
 
 library(GenomicRanges)
 gr_all <- do.call(c, rds.merged)
@@ -22,7 +33,7 @@ vcf_gregor <- data.frame(
 )
 write.table(
     vcf_gregor,
-    file = "/home/iegab/TOPMed2026/GREGoR_v1_stopgain.vcf",
+    file = "~/GREGoR_v1_stopgain_frameshift.vcf",
     sep = "\t",
     quote = FALSE,
     row.names = FALSE,
@@ -30,19 +41,19 @@ write.table(
     append = TRUE
 )
 system(paste(
-    'perl /home/iegab/annovar/convert2annovar.pl -format vcf4',
-    '/home/iegab/TOPMed2026/GREGoR_v1_stopgain.vcf',
+    'perl ~/annovar/convert2annovar.pl -format vcf4',
+    '~/GREGoR_v1_stopgain_frameshift.vcf',
     '>',
-    '/home/iegab/TOPMed2026/GREGoR_v1_stopgain.avinput'
+    '~/GREGoR_v1_stopgain_frameshift.avinput' ,sep = ''
 ))
 
 system(paste(
-    'perl /home/iegab/annovar/annotate_variation.pl',
+    'perl ~/annovar/annotate_variation.pl',
     '-build hg38',
-    '-out /home/iegab/TOPMed2026/GREGoR_v1_stopgain_gencode_v38',
+    '-out ~/GREGoR_v1_stopgain_frameshift_gencode_v38',
     '-dbtype ensGene',
-    '/home/iegab/TOPMed2026/GREGoR_v1_stopgain.avinput',
-    '/home/iegab/annovar/tempdir'
+    '~/GREGoR_v1_stopgain_frameshift.avinput',
+    '~/annovar/tempdir', sep = ''
 ))
 
 
