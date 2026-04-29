@@ -28,10 +28,11 @@ exp$MedianExpression <- apply(
   na.rm = TRUE
 )
 
-variant.df <- merge(
-  variant.df,
+df.merged <- merge(
+  df,
   exp[, c("gene_id", "MedianExpression", "Whole.Blood")],
-  by = "gene_id",
+  by.x = "ensembl_gene_id",
+  by.y = "gene_id",
   all.x = TRUE
 )
 
@@ -47,11 +48,6 @@ file <- "/location/13059_2022_2811_MOESM3_ESM.xlsx"
 excel_sheets(file)
 # skip first 2 rows so row 3 becomes the header
 hl3 <- read_excel(file, sheet = "human", skip = 1)
-
-
-breaks <- quantile(hl_pc1$half_life_pc1_z,
-          probs = c(0, 1/3, 2/3, 1),
-          na.rm =TRUE)
 
 
 #merging
