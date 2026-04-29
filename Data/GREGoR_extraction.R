@@ -50,7 +50,7 @@ system(paste(
 system(paste(
     'perl /home/iegab/annovar/annotate_variation.pl',
     '-build hg38',
-    '-out /home/iegab/TOPMed2026/GREGoR_v1_stopgain_gencode_v38',
+    '-out /home/iegab/TOPMed2026/GREGoR_v1_stopgain_hg38',
     '-dbtype ensGene',
     '/home/iegab/TOPMed2026/GREGoR_v1_stopgain.avinput',
     '/home/iegab/annovar/tempdir', sep = ''
