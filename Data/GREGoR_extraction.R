@@ -12,11 +12,8 @@ vcf_rng_fil <- process_variants(vcf_rng)
 length(vcf_rng_fil)
 
 library(GenomicRanges)
-gr_all <- do.call(c, rds.merged)
-gr_all
-length(gr_all)
-names(gr_all) <- make.unique(names(gr_all))
-gregor <- as.data.frame(gr_all)
+gregor <- as.data.frame(vcf_rng_ann, row.names = NULL)
+
 #6127
 #prepare for ANNOVAR
 vcf_gregor <- data.frame(
