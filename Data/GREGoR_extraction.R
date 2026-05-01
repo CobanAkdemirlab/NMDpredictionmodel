@@ -12,8 +12,9 @@ vcf_rng_fil <- process_variants(vcf_rng)
 length(vcf_rng_fil)
 
 library(GenomicRanges)
-gregor <- as.data.frame(vcf_rng_ann, row.names = NULL)
+gregor <- as.data.frame(vcf_rng_ann, row.names = NULL, optional = TRUE)
 
+df_true <- gregor[gregor$res_aenmd.is_ptc, ]
 #6127
 #prepare for ANNOVAR
 vcf_gregor <- data.frame(
