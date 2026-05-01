@@ -2,8 +2,7 @@
 library(aenmd)
 library(GenomicRanges)
 library(GenomeInfoDb)
-
-
+#Removed duplicate to run aenmd
 vcf_file <- "filtered_oc_base_matches.unique.vcf"
 vcf <- aenmd:::parse_vcf_VariantAnnotation(vcf_file)
 vcf_rng <- vcf$vcf_rng
