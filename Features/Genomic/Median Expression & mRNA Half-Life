@@ -58,13 +58,15 @@ df_merged <- merge(
     by.y = "Ensembl Gene Id",
     all.x = TRUE
 )
-#scaling half-life PC1
-mean_ref <- mean(df_merged$half_life_PC1, na.rm = TRUE)
-sd_ref   <- sd(df_merged$half_life_PC1, na.rm = TRUE)
+#fix the `half-life (PC1)` if necessary
+df$half_life_PC1 <- df$`half-life (PC1)`
+#scaling half-life PC1 based on TOPMed
+mean_ref <- mean(df$half_life_PC1, na.rm = TRUE) #TOPMed (used as a reference)
+sd_ref   <- sd(df$half_life_PC1, na.rm = TRUE) #TOPMed (used as a reference)
+#then apply to datasets
+df$half_life_pc1_z <- (df$half_life_PC1 - mean_ref) / sd_ref #change this based in the propor df TOPMed, gnomAD, clinVar and GREGoR
 
-df_merged$half_life_pc1_z <- (df_merged$half_life_PC1 - mean_ref) / sd_ref
-
-breaks <- quantile(df_merged$half_life_pc1_z,
+breaks <- quantile(df$half_life_pc1_z,
                    probs = c(0, 1/3, 2/3, 1),
                    na.rm = TRUE)
 df_merged <- df_merged %>%
