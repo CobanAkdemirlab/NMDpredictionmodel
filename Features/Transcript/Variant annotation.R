@@ -217,9 +217,9 @@ variants.features.fr$last.exon <- sapply(1:nrow(variants.features.fr), function(
   return(NA_character_)
 })      
 
-### penultimate exon rule
+### penultimate exon rule penultimate.last50bp
 
-variants.features.fr$penultimate.exon <- sapply(1:nrow(variants.features.fr), function(x) {
+variants.features.fr$penultimate.last50bp <- sapply(1:nrow(variants.features.fr), function(x) {
 
   if (!is.na(variants.features.fr$cds_exons[x]) &&
       !is.na(variants.features.fr$mut.exon[x])) {
