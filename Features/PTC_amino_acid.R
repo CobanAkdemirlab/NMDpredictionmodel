@@ -4,9 +4,7 @@ if (!require("BiocManager", quietly=TRUE))
     install.packages("BiocManager")
 
 BiocManager::install("txdbmaker")
-library(txdbmaker)
 
-txdb <- makeTxDbFromGFF("gencode.v45.primary_assembly.annotation.gtf.gz")
 library(ggplot2)
 library(gridExtra)
 library(plyr)
@@ -22,10 +20,12 @@ library(BSgenome.Hsapiens.UCSC.hg38)
 library(AnnotationDbi)
 
 genome <- BSgenome.Hsapiens.UCSC.hg38
+library(txdbmaker)
+
+txdb <- makeTxDbFromGFF("~/gencode/gencode.v26.primary_assembly.annotation.gtf.gz")
 
 
-
-saveDb(txdb, '~/location/txdb.gencode45.sqlite')
+#saveDb(txdb, '~/location/txdb.gencode45.sqlite')
 ensgene <- txdb
 
 
@@ -49,3 +49,5 @@ cds_seqs <- extractTranscriptSeqs(Hsapiens,
                                   cdsBy(txdb, by="tx", use.names=TRUE))
 prot_seqs <- translate(cds_seqs)
 
+
+#
