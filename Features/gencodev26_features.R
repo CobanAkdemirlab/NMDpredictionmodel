@@ -10,7 +10,7 @@ library(GenomicRanges)
 genome <- BSgenome.Hsapiens.UCSC.hg38
 
 ####
-txdb = makeTxDbFromGFF('/home/iegab/gnomAD2025/gencode.v26.primary_assembly.annotation.gtf.gz')
+txdb = makeTxDbFromGFF('~/gencode/gencode.v26.primary_assembly.annotation.gtf.gz')
 # optional loading if dataset is available
 # saveDb(txdb, '~/txdb.gencode26.sqlite')
 #start of the sequencing features extraction
