@@ -1,6 +1,6 @@
 library(data.table)
 #load the dataset (only snv and is ptc)
-variant_anno<- fread('~/TOPMed_v1_stopgain_gencode_v38.exonic_variant_function')
+variant_anno<- fread('~/NMD-TOPMed/TOPMed_v1_stopgain_gencode_v38.exonic_variant_function')
 ### start of annotation
 variant_anno$key <- paste(variant_anno$V4,':',variant_anno$V5,'_',variant_anno$V7,'>',variant_anno$V8,sep='')
 
