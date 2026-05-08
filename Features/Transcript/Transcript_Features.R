@@ -1,19 +1,5 @@
 ##load('TOPMed_whlbld_variantsusedfortheanalysis.RData')
 
-# Loop to replace NULL values with NA, not the string 'NA'
-for (i in 1:nrow(df)) {
-  print(i)
-  if (is.null(df$mut.exon[[i]][1])) {
-    df$mut.exon[[i]][1] <- NA  # Use NA (missing value) instead of 'NA' (string)
-  }
-}
-
-# Unlist the column (assuming it's a list-column)
-mut.exon <- unlist(df$mut.exon)
-
-# Replace df$mut.exon with the unlisted vector
-df$mut.exon <- mut.exon
-
 # Ensure df$mut.exon is numeric
 df$mut.exon <- as.numeric(df$mut.exon)
 
