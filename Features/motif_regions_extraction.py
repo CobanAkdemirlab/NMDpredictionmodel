@@ -8,8 +8,8 @@ from pyfaidx import Fasta
 # Configuration
 
 CSV_FILE = "/Users/iegab/TOPMed_stopgain_final_Feb132026.csv"
-gtf_file = "/Users/iegab/Downloads/gencode.v26.primary_assembly.annotation.gtf"
-db_file = "/Users/iegab/Downloads/gencode_v26.db"
+gtf_file = "~/gencode/gencode.v26.primary_assembly.annotation.gtf"
+db_file = "~/gencode/gencode_v26.db"
 
 gffutils.create_db(
     gtf_file,
@@ -19,9 +19,9 @@ gffutils.create_db(
     disable_infer_transcripts=True,
     disable_infer_genes=True
 )
-GTF_DB = "/Users/iegab/Downloads/gencode_v26.db"
+GTF_DB = "~/gencode/gencode_v26.db"
 print("Database created successfully.")
-FASTA_FILE = "/Users/iegab/Downloads/hg38.fa"
+FASTA_FILE = "~/gencode/hg38.fa"
 
 OUTPUT_DIR = "TOPMed_March_fimo_regions"
 BATCH_SIZE = 1000
@@ -281,7 +281,7 @@ def main():
 
     df = pd.read_csv(CSV_FILE, low_memory=False)
 
-    db = gffutils.FeatureDB("/Users/iegab/Downloads/gencode_v26.db")
+    db = gffutils.FeatureDB("~/gencode/gencode_v26.db")
     #remove comment if specific lines needed printing
     #df = df.iloc[[0,5]].copy()
 
