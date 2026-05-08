@@ -18,7 +18,7 @@ NMDpredictionmodel/
 │   ├── PTC_amino_acid.R
 │   ├── Median_expression_mRNA Half-Life.R
 │   ├── transcript_to_gene_mapping.py
-│   ├── conservation_scores.py     # PhastCons & PhyloP
+│   ├── gnomAD_constraint.R
 │   ├── ejc_occupancy_txnames_parallel_modified.py
 │   ├── ptc_aug_analyzer.py
 │   ├── conservation_scores.py     # PhastCons & PhyloP
