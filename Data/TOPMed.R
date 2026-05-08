@@ -1,5 +1,3 @@
-#bcf files
-
 #
 setwd('/path/to/TOR.csv')
 
