@@ -30,7 +30,7 @@ vcf_gregor <- data.frame(
 )
 write.table(
     vcf_gregor,
-    file = "/home/iegab/TOPMed2026/GREGoR_v1_stopgain.vcf",
+    file = "~/GREGoR/GREGoR_v1_stopgain.vcf",
     sep = "\t",
     quote = FALSE,
     row.names = FALSE,
@@ -39,18 +39,18 @@ write.table(
 )
 system(paste(
     'perl ~/annovar/convert2annovar.pl -format vcf4',
-    '~/GREGoR_v1_stopgain_frameshift.vcf',
+    '~/GREGoR/GREGoR_v1_stopgain_frameshift.vcf',
     '>',
-    '~/GREGoR_v1_stopgain_frameshift.avinput' ,sep = ''
+    '~/GREGoR/GREGoR_v1_stopgain_frameshift.avinput' ,sep = ''
 ))
 
 system(paste(
-    'perl /home/iegab/annovar/annotate_variation.pl',
+    'perl ~/annovar/annotate_variation.pl',
     '-build hg38',
-    '-out /home/iegab/TOPMed2026/GREGoR_v1_stopgain_hg38',
+    '-out ~/GREGoR/GREGoR_v1_stopgain_hg38',
     '-dbtype ensGene',
-    '/home/iegab/TOPMed2026/GREGoR_v1_stopgain.avinput',
-    '/home/iegab/annovar/tempdir', sep = ''
+    '~/GREGoR/GREGoR_v1_stopgain.avinput',
+    '~/annovar/tempdir', sep = ''
 ))
 
 
