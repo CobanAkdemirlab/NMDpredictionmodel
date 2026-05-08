@@ -9,7 +9,7 @@ import pandas as pd
 
 # CONFIG
 
-WORKDIR = Path("/Users/iegab/Downloads")
+WORKDIR = Path("/path/to/location")
 
 SEQUENCE_CSV = WORKDIR / "TOPMed_with_sequences.csv"
 
