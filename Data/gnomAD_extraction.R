@@ -1,4 +1,4 @@
-setwd("/home/iegab/TOPMed2026/gnomAD")
+setwd("~/gnomAD/gnomAD")
 files <- list.files(pattern = "\\.rds$", full.names = TRUE)
 gr_list <- lapply(files, readRDS)
 library(GenomicRanges)
@@ -7,7 +7,7 @@ gr_all <- do.call(c, gr_list)
 gr_all
 length(gr_all)
 head(mcols(gr_all))
-saveRDS(gr_all, "/home/iegab/TOPMed2026/gnomAD/gnomAD_all_aenmd.rds")
+saveRDS(gr_all, "~/gnomAD/gnomAD/gnomAD_all_aenmd.rds")
   
 df_gnomad_snv <- df_gnomad_ptc[which(df_gnomad_ptc$type=='snv'),]
 vcf_gnomad <- data.frame(
@@ -24,11 +24,11 @@ vcf_gnomad <- data.frame(
 writeLines(
     c("##fileformat=VCFv4.2",
       "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO"),
-    "/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain.vcf"
+    "~/gnomAD/gnomAD_v1_stopgain.vcf"
 )
 write.table(
     vcf_gnomad,
-    file = "/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain.vcf",
+    file = "~/gnomAD/gnomAD_v1_stopgain.vcf",
     sep = "\t",
     quote = FALSE,
     row.names = FALSE,
@@ -36,18 +36,18 @@ write.table(
     append = TRUE
 )
 system(paste(
-    'perl /home/iegab/annovar/convert2annovar.pl -format vcf4',
-    '/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain.vcf',
+    'perl ~/annovar/convert2annovar.pl -format vcf4',
+    '~/gnomAD/gnomAD_v1_stopgain.vcf',
     '>',
-    '/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain.avinput'
+    '~/gnomAD/gnomAD_v1_stopgain.avinput'
 ))
 system(paste(
-    'perl /home/iegab/annovar/annotate_variation.pl',
+    'perl ~/annovar/annotate_variation.pl',
     '-build hg38',
-    '-out /home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_gencode_v38',
+    '-out ~/gnomAD/gnomAD_v1_stopgain_gencode_v38',
     '-dbtype ensGene',
-    '/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain.avinput',
-    '/home/iegab/annovar/tempdir'
+    '~/gnomAD/gnomAD_v1_stopgain.avinput',
+    '~/annovar/tempdir'
 ))
 fr.var.can <- data.frame(
     contig      = paste0("chr", df_gnomad_snv$seqnames),
@@ -76,13 +76,13 @@ vcf <- data.frame(
 )
 
 write.table(vcf,
-            file = "/home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_frameshift.vcf",
+          file = "~/gnomAD/gnomAD_v1_stopgain_frameshift.vcf",
             sep = "\t",
             quote = FALSE,
             row.names = FALSE,
             col.names = FALSE)
-system(paste('perl /home/iegab/annovar/convert2annovar.pl -format vcf4 /home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_frameshift.vcf > /home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_frameshift.avinput',sep = ''))
+system(paste('perl ~/annovar/convert2annovar.pl -format vcf4 ~/gnomAD/gnomAD_v1_stopgain_frameshift.vcf > ~/gnomAD/gnomAD_v1_stopgain_frameshift.avinput',sep = ''))
 
-system(paste('perl /home/iegab/annovar/annotate_variation.pl -build hg38 -out /home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_frameshift_gencode_v38 -dbtype ensGene /home/iegab/TOPMed2026/gnomAD/gnomAD_v1_stopgain_frameshift.avinput /home/iegab/annovar/tempdir', sep = ''))
+system(paste('perl ~/annovar/annotate_variation.pl -build hg38 -out ~/gnomAD/gnomAD_v1_stopgain_frameshift_gencode_v38 -dbtype ensGene ~/gnomAD/gnomAD_v1_stopgain_frameshift.avinput ~/annovar/tempdir', sep = ''))
 
 
