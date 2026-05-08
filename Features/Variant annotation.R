@@ -392,4 +392,7 @@ imp.rem.ind <- df[which(df$Gene_ID%in%imprintedgenes),]
 imp.rem.ind <- which(df$Gene_ID %in% imprintedgenes)
 noimpdf <- df[-imp.rem.ind, ]
 
+#save
+
+
                                          
