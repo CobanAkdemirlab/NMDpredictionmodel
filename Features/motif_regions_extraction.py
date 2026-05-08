@@ -7,7 +7,7 @@ from pyfaidx import Fasta
 
 # Configuration
 
-CSV_FILE = "/Users/iegab/TOPMed_stopgain_final_Feb132026.csv"
+CSV_FILE = "/NMD_TOPMed/TOPMed_stopgain.csv"
 gtf_file = "~/gencode/gencode.v26.primary_assembly.annotation.gtf"
 db_file = "~/gencode/gencode_v26.db"
 
