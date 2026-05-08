@@ -1,4 +1,4 @@
-setwd('/home/iegab/TOPMed2026')
+setwd('~/ClinVar2026')
 #libraries
 library(aenmd)
 library(S4Vectors)
@@ -7,11 +7,12 @@ vcf_file <- "clinvar_20260201.vcf.gz"
 vcf <- aenmd:::parse_vcf_VariantAnnotation(vcf_file)
 vcf_rng <- vcf$vcf_rng
 vcf_rng_fil <- process_variants(vcf_rng)
-
+#- filter out variants with ill-defined alternative allele
 ind_out <-  Biostrings::vcountPattern("N", vcf_rng_fil$alt) > 0
 vcf_rng_fil <- vcf_rng_fil[!ind_out]
+#- back to the original workflow
 vcf_rng_ann <- annotate_nmd(vcf_rng_fil, rettype="gr")
-#saveRDS(vcf_rng_ann, file = "/home/iegab/TOPMed2026/clinvar_aenmd_20260201.rds")
+#saveRDS(vcf_rng_ann, file = "~/ClinVar/clinvar_aenmd_20260201.rds")
 
 df <- as.data.frame(vcf_rng_ann, row.names = NULL, optional = TRUE)
 df_true <- df[df$res_aenmd.is_ptc, ]
@@ -19,6 +20,7 @@ df_true <- df[df$res_aenmd.is_ptc, ]
 
 #df_snv <- df_true[df_true$type == 'snv', ]
 #save(df_snv, file='/home/iegab/TOPMed2026/clinvar_snv_20260201.RData')
+
 
 #Create matching columns
 df_snv$CHROM <- df_snv$seqnames
