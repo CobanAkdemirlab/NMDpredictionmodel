@@ -55,7 +55,9 @@ NMDpredictionmodel/
 │   └── annotated_output/
 │
 ├── 3_Model/
-│   └── (ENTER HERE)
+│   ├── TrunCat
+│   ├── TrunKitten
+│   └── 
 │
 ├── 4_Plotting/
 │   ├── plot_predictions.py
