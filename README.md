@@ -11,14 +11,14 @@ This repository implements an end-to-end workflow that integrates large-scale ge
 * Annotate protein-truncating variants
 * Extract biologically meaningful features
 * Train predictive models of NMD efficiency
-* Interpret model behavior using SHAP
+* Plot important features
 
 ---
 
 ## Pipeline Overview
 
 ```
-Data → Cleaning → Annotation → Feature Engineering → Modeling → Interpretation → Visualization
+Data → Cleaning → Annotation → Feature Engineering → Modeling → Visualization
 ```
 
 ---
@@ -62,11 +62,6 @@ NMDpredictionmodel/
 │   ├── feature_distributions.py
 │   └── figures/
 │
-├── 5_Interpretation/
-│   ├── shap_analysis.py
-│   ├── shap_plots/
-│   └── feature_importance/
-│
 └── README.md
 ```
 
@@ -103,12 +98,6 @@ Includes:
 * Machine learning models trained to predict NMD escape
 * Uses engineered features across multiple biological layers
 
----
-
-### Interpretation
-
-* SHAP-based feature importance analysis
-* Identification of key drivers of NMD escape
 
 ---
 
@@ -142,7 +131,6 @@ Run modules in order:
 1. `1_Data/` → dataset extraction
 2. `2_Features/` → annotation & feature generation
 3. `3_Model/` → model training
-4. `5_Interpretation/` → SHAP analysis
 5. `4_Plotting/` → visualization
 
 ---
