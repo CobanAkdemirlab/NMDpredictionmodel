@@ -1140,8 +1140,76 @@ merged.2[which(merged.2$txnames%in%txnames.3utr.PTBP1),'threeUTR.PTBP1'] <- 'The
 merged.2$threeUTR.PTBP1 <-
   merged.2$txnames %in% txnames.3utr.PTBP1
 
-save(merged.2, file='hg38_seqfeatures_Gencodev26_2026.RData')
+#save(merged.2, file='hg38_seqfeatures_Gencodev26_2026.RData')
 
-#Sanity check:
-dim(merged.2)
-#[1] 91907    61
+#Merge with main df (variants.features.fr)
+features.fr <- merged.2
+#make sure merge with the columns that has transcript ID with no version number remove the version number on the txnames
+#variant.anno.hiqual$tx_clean <- sub("\\..*$","", variant.anno.hiqual$txnames)
+#
+variants.features.fr <- merge(variant.anno.hiqual,features.fr,by='txnames',all.x=TRUE)
+variants.features.fr <- variants.features.fr[!is.na(variants.features.fr$txnames),]
+                                   
+                                   
+#log transformation
+                                   df$log2_CDS <- log2(df$cds_length)
+max_log2 <- max(df$log2_CDS, na.rm = TRUE)
+
+df$cds_length.cut <- cut(
+  df$log2_CDS,
+  breaks = c(0, 10, max_log2),
+  labels = c("0-10", ">10"),
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+# Check distribution
+table(df$cds_length.cut, useNA = "ifany")
+
+
+df$log2_3utr <- log2(df$threeUTR_length)
+max_log2__3utr <- max(df$log2_3utr, na.rm = TRUE)
+
+df$threeUTR_length.cut<- cut(
+  df$log2_3utr,
+  breaks = c(0, 10, max_log2__3utr),
+  labels = c("0-10", ">10"),
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+# Check distribution
+table(df$threeUTR_length.cut, useNA = "ifany")
+
+df$log2_5utr <- log2(df$fiveutr_length)
+max_log2__5utr <- max(df$log2_5utr, na.rm = TRUE)
+
+df$fiveUTR_length.cut<- cut(
+  df$log2_5utr,
+  breaks = c(0, 7, max_log2__5utr),
+  labels = c("0-7", ">7"),
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+# Check distribution
+table(df$fiveUTR_length.cut, useNA = "ifany")
+
+#New 3'UTR 
+#df$newUTR_length <- df$threeUTR_length+df$PTC.2.end
+#df$log2newUTR <- log2(df$newUTR_length)
+
+max_log2newUTR <- max(df$log2newUTR, na.rm = TRUE)
+df$log2newUTR.cut <- cut(
+  df$log2newUTR,
+  breaks = c(0, 10, max_log2newUTR),
+  labels = c("0-10", ">10"),
+  include.lowest = TRUE,
+  right = TRUE
+)
+
+# Check distribution
+table(df$log2newUTR.cut, useNA = "ifany")
+                                   
+
+                        
