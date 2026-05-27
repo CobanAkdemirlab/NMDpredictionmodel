@@ -34,12 +34,14 @@ NMDpredictionmodel/
 │   ├── ClinVar_extraction.R
 │   └── GREGoR_extraction.R
 │
-├── 2_Features/
+├── 2_Annotation/
 │   ├── canonical_transcript_annotation.R
-│   ├── gencodev26_features.R
 │   ├── variant_annotation.R
+│   ├── ASE_simulation.R
+
+├── 3_Features/
+│   ├── gencodev26_features.R
 │   ├── transcript_features.R
-│   ├── simulation.R
 │   ├── ptc_features.R
 │   ├── motif_regions_extraction.py
 │   ├── motif_fimo_matrix.py
@@ -54,16 +56,21 @@ NMDpredictionmodel/
 │   ├── ejc_analysis.py
 │   └── annotated_output/
 │
-├── 3_Model/
+├── 4_Model/
 │   ├── TrunCat
 │   ├── TrunKitten
 │   └── 
 │
-├── 4_Plotting/
+├── 5_Plotting/
 │   ├── plot_predictions.py
 │   ├── feature_distributions.py
 │   └── figures/
 │
+├── 6_Prediction/
+│   ├── plot_predictions.py
+│   └── /
+
+
 └── README.md
 ```
 
