@@ -4,6 +4,7 @@ library(ggplot2)
 library(gridExtra)
 library(plyr)
 library(dplyr)
+#create ASE
 
 #Genotype and ASE files were merged together
 setwd('~/ASE_genotype')
