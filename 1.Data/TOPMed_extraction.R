@@ -42,18 +42,9 @@ gatk ASEReadCounter \
     --min-mapping-quality 255 \
     --min-base-quality 10
 ###############################################################################
-# Summary
-#
-# Initial extracted variants:
-#   77,918 stop_gained + frameshift variants
-#
-# After duplicate removal:
-#   77,408 variants
-#
-# ASE counts computed across:
-#   11,630 TOPMed donors with matched RNA-seq
-###############################################################################
-# Genotype extraction 
+
+# Genotype extraction with the TOR ID
+
 # Genotype and ASE files were merged together
 setwd('~/ASE_genotype')
 
