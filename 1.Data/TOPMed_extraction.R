@@ -53,7 +53,8 @@ gatk ASEReadCounter \
 # ASE counts computed across:
 #   11,630 TOPMed donors with matched RNA-seq
 ###############################################################################
-#Genotype and ASE files were merged together
+# Genotype extraction 
+# Genotype and ASE files were merged together
 setwd('~/ASE_genotype')
 
 files <- list.files('.','.vcf')
