@@ -4,8 +4,55 @@ library(ggplot2)
 library(gridExtra)
 library(plyr)
 library(dplyr)
-#create ASE
 
+# ASE EXTRACTION PIPELINE FOR PROTEIN-TRUNCATING VARIANTS (PTVs)
+# TOPMed Freeze 9b
+#
+# Input:
+#   - TOPMed Freeze 9b VCF
+#   - matched RNA-seq BAM files
+#
+# Output:
+#   - deduplicated PTV VCF
+#   - ASEReadCounter allele counts
+
+bcftools view \
+    --drop-genotypes \
+    -i 'INFO/ANN ~ "frameshift_variant" || INFO/ANN ~ "stop_gained"' \
+    TOPMed_Freeze9b.vcf.gz \
+    -Oz \
+    -o TOPMed_PTVs.vcf.gz
+
+#
+
+bcftools norm \
+    --rm-dup all \
+    TOPMed_PTVs.vcf.gz \
+    -Oz \
+    -o TOPMed_PTVs.dedup.vcf.gz
+#
+tabix -p vcf TOPMed_PTVs.dedup.vcf.gz
+
+gatk ASEReadCounter \
+    -R GRCh38.fa \
+    -I sample.rna.bam \
+    -V TOPMed_PTVs.dedup.vcf.gz \
+    -O sample_ASE_counts.table \
+    --min-depth 1 \
+    --min-mapping-quality 255 \
+    --min-base-quality 10
+###############################################################################
+# Summary
+#
+# Initial extracted variants:
+#   77,918 stop_gained + frameshift variants
+#
+# After duplicate removal:
+#   77,408 variants
+#
+# ASE counts computed across:
+#   11,630 TOPMed donors with matched RNA-seq
+###############################################################################
 #Genotype and ASE files were merged together
 setwd('~/ASE_genotype')
 
