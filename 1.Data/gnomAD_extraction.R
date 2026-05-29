@@ -1,3 +1,6 @@
+#gnomAD v4.1
+
+
 setwd("~/gnomAD/gnomAD")
 files <- list.files(pattern = "\\.rds$", full.names = TRUE)
 gr_list <- lapply(files, readRDS)
