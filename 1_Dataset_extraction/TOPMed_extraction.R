@@ -1,11 +1,7 @@
-#libraries
-library(data.table)
-library(ggplot2)
-library(gridExtra)
-library(plyr)
-library(dplyr)
-
+# Title: TOPMed extraction dataset
+# Description: ASE EXTRACTION counts and merge  SNV-normalized NMD efficiency values for PTC and SNV variants
 # ASE EXTRACTION PIPELINE FOR PROTEIN-TRUNCATING VARIANTS (PTVs)
+
 # TOPMed Freeze 9b
 #
 # Input:
@@ -15,6 +11,12 @@ library(dplyr)
 # Output:
 #   - deduplicated PTV VCF
 #   - ASEReadCounter allele counts
+
+library(data.table)
+library(ggplot2)
+library(gridExtra)
+library(plyr)
+library(dplyr)
 
 bcftools view \
     --drop-genotypes \
@@ -42,8 +44,10 @@ gatk ASEReadCounter \
     --min-mapping-quality 255 \
     --min-base-quality 10
 ###############################################################################
-
 # Genotype extraction with the TOR ID
+
+
+###############################################################################
 
 # Genotype and ASE files were merged together
 setwd('~/ASE_genotype')
