@@ -1,5 +1,11 @@
 # Title: TOPMed extraction dataset
-# Description: ASE EXTRACTION counts and merge  SNV-normalized NMD efficiency values for PTC and SNV variants
+## 1. Extract stop_gained and frameshift variants from Freeze 9b BCF
+## 2. Remove duplicate/overlapping variants
+## 3. Create truncating-variant VCF
+## 4. Run GATK ASEReadCounter on each donor RNA-seq BAM
+## 5. Obtain refCount and altCount for all variants
+## 6. Merge ASE counts with donor genotypes from Freeze 9b
+##7. Filter to heterozygous PTC variants for downstream NMD analyses
 # ASE EXTRACTION PIPELINE FOR PROTEIN-TRUNCATING VARIANTS (PTVs)
 
 # TOPMed Freeze 9b
@@ -25,16 +31,16 @@ bcftools view \
     -Oz \
     -o TOPMed_PTVs.vcf.gz
 
-#
+#remove duplicated
 
 bcftools norm \
     --rm-dup all \
     TOPMed_PTVs.vcf.gz \
     -Oz \
     -o TOPMed_PTVs.dedup.vcf.gz
-#
-tabix -p vcf TOPMed_PTVs.dedup.vcf.gz
 
+tabix -p vcf TOPMed_PTVs.dedup.vcf.gz
+#ASE extraction
 gatk ASEReadCounter \
     -R GRCh38.fa \
     -I sample.rna.bam \
