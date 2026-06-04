@@ -1,28 +1,37 @@
-# Title: TOPMed extraction dataset
-## 1. Extract stop_gained and frameshift variants from Freeze 9b BCF
-## 2. Remove duplicate/overlapping variants
-## 3. Create truncating-variant VCF
-## 4. Run GATK ASEReadCounter on each donor RNA-seq BAM
-## 5. Obtain refCount and altCount for all variants
-## 6. Merge ASE counts with donor genotypes from Freeze 9b
-##7. Filter to heterozygous PTC variants for downstream NMD analyses
-# ASE EXTRACTION PIPELINE FOR PROTEIN-TRUNCATING VARIANTS (PTVs)
-
-# TOPMed Freeze 9b
+# ============================================================================
+# Title: TOPMed ASE Extraction Pipeline for Protein-Truncating Variants (PTVs)
+# ============================================================================
+# Purpose:
+#   1. Extract stop_gained and frameshift variants from TOPMed Freeze 9b
+#   2. Remove duplicate/overlapping variants
+#   3. Create truncating-variant VCF
+#   4. Run GATK ASEReadCounter on RNA-seq BAM files
+#   5. Extract refCount and altCount for all variants
+#   6. Merge ASE counts with donor genotypes
+#   7. Filter to heterozygous PTC variants for NMD analyses
 #
 # Input:
 #   - TOPMed Freeze 9b VCF
-#   - matched RNA-seq BAM files
+#   - Matched RNA-seq BAM files
 #
 # Output:
-#   - deduplicated PTV VCF
+#   - Deduplicated PTV VCF
 #   - ASEReadCounter allele counts
-
+#   - Merged heterozygous variant data
+# ============================================================================
+# Load libraries
 library(data.table)
-library(ggplot2)
-library(gridExtra)
-library(plyr)
 library(dplyr)
+library(stringr)
+
+# Configuration
+CONFIG <- list(
+  working_dir = "~/ASE_genotype",
+  output_dir = "~/NMD_TOPMed",
+  annovar_path = "~/annovar",
+  vcf_pattern = ".vcf"
+)
+
 
 bcftools view \
     --drop-genotypes \
@@ -56,6 +65,8 @@ gatk ASEReadCounter \
 ###############################################################################
 
 # Genotype and ASE files were merged together
+setwd(CONFIG$working_dir)
+
 setwd('~/ASE_genotype')
 
 files <- list.files('.','.vcf')
