@@ -1,0 +1,32 @@
+================================================================================
+NMD ESCAPEE MODEL - PERFORMANCE SUMMARY
+================================================================================
+
+Dataset Info:
+  Samples: 5749
+  Features: 853
+    - Categorical: 26
+    - Numeric: 827
+  Escapee Rate: 45.5%
+
+Cross-Validation Performance:
+  Out-of-Fold AUC: 0.7853
+  Mean Fold AUC: 0.7852 ± 0.0131
+  Fold AUCs: ['0.7706', '0.7763', '0.8049', '0.7963', '0.7780']
+  Best Fold: 3 (AUC=0.8049)
+
+Models Saved:
+  - Final model: truncat.cbm
+  - All CV folds: cv_folds/fold_[1-5]_auc_*.cbm/.pkl
+  - Best CV fold: Fold 3 (AUC=0.8049)
+
+Hyperparameters (from config):
+  iterations: 1294
+  learning_rate: 0.03072886163898516
+  depth: 8
+  l2_leaf_reg: 6.426732194425712
+  bagging_temperature: 0.9091316663819741
+  random_strength: 0.13533272382130845
+  border_count: 155
+  min_data_in_leaf: 29
+  early_stopping_rounds: 50
