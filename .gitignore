@@ -34,38 +34,52 @@ Thumbs.db
 
 # Repo-specific local data / generated outputs
 
-# TrunCat local input data (keep README files only)
+# ── TrunCat data ──────────────────────────────────────────────────────────────
+# Ignore all data files by default; allowlist specific committed inputs
 Model/TrunCat/data/*
 !Model/TrunCat/data/README.md
+!Model/TrunCat/data/TOPMed_stopgain.csv
+!Model/TrunCat/data/TOPMed_cleaned.csv
+!Model/TrunCat/data/TOPMed_merged.csv
+!Model/TrunCat/data/final_feature_list.csv
 !Model/TrunCat/data/annotations/
 Model/TrunCat/data/annotations/*
 !Model/TrunCat/data/annotations/README.md
 
-# TrunCat generated outputs
-Model/TrunCat/outputs/
+# ── TrunCat results ───────────────────────────────────────────────────────────
+# Ignore large/generated artifacts; commit small summary files
+Model/TrunCat/results/models/
+Model/TrunCat/results/figures/
+Model/TrunCat/results/.ipynb_checkpoints/
 
-# TrunKitten local input data (keep README + synthetic example only)
+# ── TrunCat predictions ───────────────────────────────────────────────────────
+Model/TrunCat/predict/annotations/
+Model/TrunCat/predict/overlap/
+Model/TrunCat/predict/*stopgain*.csv
+Model/TrunCat/predict/*archive*.csv
+Model/TrunCat/predict/Untitled.ipynb
+*.db
+*.bed
+
+# ── TrunKitten ────────────────────────────────────────────────────────────────
 Model/TrunKitten/inputs/*
 !Model/TrunKitten/inputs/README.md
 !Model/TrunKitten/inputs/variants.example.tsv
-
 Model/TrunKitten/data/*
 !Model/TrunKitten/data/README.md
-
-
-# Notebook-generated result trees elsewhere in repo
-notebooks/results/
-results/figures/
-predict/overlap_audit/
-
-# CatBoost training artifacts (transient, regenerated on each train)
-catboost_info/
-
-# Model results (regenerable; not committed)
-
-Model/TrunCat/results/
-Model/TrunKitten/results/
+Model/TrunKitten/results/models/
 Model/TrunKitten/model/cv_folds/
 
-# CatBoost training artifacts (transient, regenerated on each train)
+# ── NMDetective outputs ───────────────────────────────────────────────────────
+Features/nmdetective/outputs/topmed_with_nmdetective*.tsv
+Features/nmdetective/outputs/topmed_nmdetectiveB_rules.tsv
+
+# ── Benchmarking ──────────────────────────────────────────────────────────────
+Model/Benchmarking/outputs/
+
+# ── Global: archive/backup/transient files ───────────────────────────────────
+*_archive_*.csv
+*_buggy_backup.*
 catboost_info/
+notebooks/results/
+results/figures/
