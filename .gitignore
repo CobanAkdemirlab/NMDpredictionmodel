@@ -83,3 +83,11 @@ Model/Benchmarking/NMDetective-B/outputs/
 catboost_info/
 notebooks/results/
 results/figures/
+
+# Prediction summary plots and one-off notebooks
+Model/TrunCat/predict/*.png
+Model/TrunCat/predict/overlap_pairwise_3way.ipynb
+Model/TrunCat/predict/predict_gregor.ipynb
+Model/TrunCat/predict/predict_new_variants.ipynb
+Model/TrunCat/predict/replace_EJCdownsstreamcut.ipynb
+Model/TrunKitten/results/cv_predictions.csv
