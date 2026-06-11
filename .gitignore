@@ -71,11 +71,11 @@ Model/TrunKitten/results/models/
 Model/TrunKitten/model/cv_folds/
 
 # ── NMDetective outputs ───────────────────────────────────────────────────────
-Features/nmdetective/outputs/topmed_with_nmdetective*.tsv
-Features/nmdetective/outputs/topmed_nmdetectiveB_rules.tsv
+Model/Benchmarking/NMDetective-B/outputs/topmed_with_nmdetective*.tsv
+Model/Benchmarking/NMDetective-B/outputs/topmed_nmdetectiveB_rules.tsv
 
 # ── Benchmarking ──────────────────────────────────────────────────────────────
-Model/Benchmarking/outputs/
+Model/Benchmarking/NMDetective-B/outputs/
 
 # ── Global: archive/backup/transient files ───────────────────────────────────
 *_archive_*.csv
