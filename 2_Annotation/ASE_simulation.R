@@ -1,3 +1,11 @@
+#####
+library(parallel)
+library(dplyr)
+df.sub.new <- df
+df.sub.new.1 <- NULL
+
+#df.sub.new.1 <- NULL
+### 100 simulations
 missing_variants <- 0
 ind <- which(fr.var.can$totalCount<8)
 fr.var.can.new <- fr.var.can[-ind,]
