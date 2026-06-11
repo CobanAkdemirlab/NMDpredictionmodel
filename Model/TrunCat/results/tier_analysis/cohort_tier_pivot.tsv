@@ -1,0 +1,5 @@
+cohort	High-confidence sensitive	Probable sensitive	Uncertain	Probable escape	High-confidence escape	N total
+ClinVar	37.4	19.6	21.9	7.8	13.2	30128
+GREGoR	33.8	13.5	15.9	9.1	27.7	2548
+TOPMed (OOF, reference)	13.7	29.2	30.8	14.5	11.8	5749
+gnomAD	33.6	17.9	19.9	9.1	19.5	137857

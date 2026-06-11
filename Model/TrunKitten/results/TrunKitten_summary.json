@@ -1,0 +1,59 @@
+{
+  "model_name": "TrunKitten (reduced TrunCat model using key informative transcript features)",
+  "target": "NMD.ESCAPEE",
+  "n_features": 10,
+  "features_in_order": [
+    "last.EJC",
+    "relativePTClocation",
+    "half_life_PC1",
+    "cdsseqs_AU_content",
+    "mut.exon",
+    "phastcons_new3utr_first200_median",
+    "phylop_ptc_to_ejc_median",
+    "AmountExonsAfter",
+    "cdsseq_AUcontentlast200",
+    "cdsseqs_UC_content"
+  ],
+  "categorical_features": [
+    "last.EJC"
+  ],
+  "numerical_features": [
+    "relativePTClocation",
+    "half_life_PC1",
+    "cdsseqs_AU_content",
+    "mut.exon",
+    "phastcons_new3utr_first200_median",
+    "phylop_ptc_to_ejc_median",
+    "AmountExonsAfter",
+    "cdsseq_AUcontentlast200",
+    "cdsseqs_UC_content"
+  ],
+  "shap_ranking_source": "/Users/jschmidt3/NMDpredictionmodel/Model/TrunKitten/inputs/shap_feature_importance_rankings.csv",
+  "mean_abs_shap": {
+    "last.EJC": 0.49542314558171,
+    "relativePTClocation": 0.189620803205498,
+    "half_life_PC1": 0.1500778284273904,
+    "cdsseqs_AU_content": 0.1198785797853096,
+    "mut.exon": 0.0647994735151013,
+    "phastcons_new3utr_first200_median": 0.0620538251980465,
+    "phylop_ptc_to_ejc_median": 0.0567270191090386,
+    "AmountExonsAfter": 0.056639166733754,
+    "cdsseq_AUcontentlast200": 0.0490261085202727,
+    "cdsseqs_UC_content": 0.0489243549952364
+  },
+  "youden_threshold": 0.41810096132863683,
+  "training_samples": 5749,
+  "escape_rate": 0.45538354496434164,
+  "random_seed": 42,
+  "catboost_params": {
+    "iterations": 1922,
+    "learning_rate": 0.01556,
+    "depth": 7,
+    "l2_leaf_reg": 6.89,
+    "bagging_temperature": 0.047,
+    "random_strength": 0.062,
+    "border_count": 227,
+    "min_data_in_leaf": 23,
+    "random_seed": 42
+  }
+}
