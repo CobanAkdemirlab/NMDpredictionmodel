@@ -65,9 +65,6 @@ NMDpredictionmodel/
 │   ├── plot_predictions.py
 │   ├── feature_distributions.py
 │   └── figures/
-│
-├── 6_Prediction/
-│   ├── plot_predictions.py
 │   └── /
 
 
@@ -138,9 +135,10 @@ Includes:
 Run modules in order:
 
 1. `1_Data/` → dataset extraction
-2. `2_Features/` → annotation & feature generation
-3. `3_Model/` → model training
-5. `4_Plotting/` → visualization
+2. `2_Annotation/` → annotation
+3. `3_Features/` → feature generation
+4. `4_Model/` → model training
+5. `5_Plotting/` → visualization
 
 ---
 
