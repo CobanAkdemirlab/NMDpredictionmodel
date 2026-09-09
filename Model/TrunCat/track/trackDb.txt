@@ -1,0 +1,7 @@
+track truncat_predictions
+bigDataUrl https://raw.githubusercontent.com/CobanAkdemirLab/NMDpredictionmodel/main/Model/TrunCat/track/truncat_predictions.bb
+shortLabel TrunCat predictions
+longLabel TrunCat NMD-escape predictions, scored variants only (not genome-wide)
+type bigBed 6 +
+itemRgb off
+visibility pack
