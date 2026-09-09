@@ -91,3 +91,7 @@ Model/TrunCat/predict/predict_gregor.ipynb
 Model/TrunCat/predict/predict_new_variants.ipynb
 Model/TrunCat/predict/replace_EJCdownsstreamcut.ipynb
 Model/TrunKitten/results/cv_predictions.csv
+Model/TrunCat/results/ablation/response_figure_*.png
+Model/TrunCat/results/ablation/trunkitten_drop_no_replace_test.csv
+Model/TrunCat/results/ablation/trunkitten_redundancy_swap_test.csv
+Model/TrunCat/track/trackDb_local.txt
