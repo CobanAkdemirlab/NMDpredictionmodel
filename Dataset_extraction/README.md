@@ -13,7 +13,7 @@ Four genomic datasets were processed in this study. **TOPMed Freeze 9b was used 
 | TOPMed | Freeze 9b | GRCh38 | SNVs | Model development, training, and internal testing |
 | gnomAD | v4.1 | GRCh38 | SNVs | External prediction |
 | ClinVar | 2026-02-01 | GRCh38 | SNVs | External prediction |
-| GREGoR | [ADD DATA RELEASE] | GRCh38 | SNVs | External prediction |
+| GREGoR | U15 | GRCh38 | SNVs | External prediction |
 
 > **Reproducing the TrunCat model-development dataset:** The TOPMed workflow (`01a` → `01b`) is the dataset-extraction path required to reconstruct the model-development feature matrix. gnomAD, ClinVar, and GREGoR are processed independently for external prediction analyses.
 
