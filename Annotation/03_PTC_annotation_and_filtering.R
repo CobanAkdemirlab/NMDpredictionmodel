@@ -61,9 +61,34 @@ CONFIG <- list(
     min_whole_blood_tpm = 1
 )
 
-
 # ------------------------------------------------------------------------------
-# 3. Initialize dataset
+# 3. Add GENCODE v26 transcript structure
+# ------------------------------------------------------------------------------
+
+# `variant.anno.hiqual` is the output from:
+# 01_variant_annotation.R
+#
+# It contains the selected canonical transcript in `txnames`.
+
+transcript_structure <- readRDS(
+    CONFIG$transcript_structure_file
+)
+
+# Merge transcript-level structural information by canonical transcript
+variants.features.fr <- variant.anno.hiqual %>%
+    left_join(
+        transcript_structure,
+        by = "txnames"
+    )
+
+message(
+    "Variants with GENCODE v26 transcript structure: ",
+    sum(!is.na(variants.features.fr$cds_exons)),
+    " / ",
+    nrow(variants.features.fr)
+)
+# ------------------------------------------------------------------------------
+# 4. Initialize dataset
 # ------------------------------------------------------------------------------
 
 topmed <- variants.features.fr %>%
@@ -73,7 +98,7 @@ topmed <- variants.features.fr %>%
 
 
 # ------------------------------------------------------------------------------
-# 4. Parse coding position from ANNOVAR transcript annotation
+# 5. Parse coding position from ANNOVAR transcript annotation
 # ------------------------------------------------------------------------------
 
 extract_coding_position <- function(annotation, transcript_id) {
@@ -124,7 +149,7 @@ topmed$coding.pos <- mapply(
 
 
 # ------------------------------------------------------------------------------
-# 5. Gene identifier
+# 6. Gene identifier
 # ------------------------------------------------------------------------------
 
 topmed$GENE_ID <- vapply(
@@ -139,7 +164,7 @@ topmed$GENE_ID <- vapply(
 
 
 # ------------------------------------------------------------------------------
-# 6. Mutated coding exon
+# 7. Mutated coding exon
 # ------------------------------------------------------------------------------
 
 get_mutated_exon <- function(
@@ -175,7 +200,7 @@ topmed$mut.exon <- mapply(
 
 
 # ------------------------------------------------------------------------------
-# 7. Mutated exon length
+# 8. Mutated exon length
 # ------------------------------------------------------------------------------
 
 get_exon_length <- function(
@@ -214,7 +239,7 @@ topmed$length.mutated.exon <- mapply(
 
 
 # ------------------------------------------------------------------------------
-# 8. Start-proximal features
+# 9. Start-proximal features
 # ------------------------------------------------------------------------------
 
 topmed <- topmed %>%
@@ -243,7 +268,7 @@ topmed <- topmed %>%
 
 
 # ------------------------------------------------------------------------------
-# 9. PTC geometry
+# 10. PTC geometry
 # ------------------------------------------------------------------------------
 
 get_ptc_to_ejc <- function(
@@ -288,7 +313,7 @@ topmed <- topmed %>%
 
 
 # ------------------------------------------------------------------------------
-# 10. Last-exon rule
+# 11. Last-exon rule
 # ------------------------------------------------------------------------------
 
 topmed <- topmed %>%
@@ -307,7 +332,7 @@ topmed <- topmed %>%
 
 
 # ------------------------------------------------------------------------------
-# 11. Penultimate-last-50-bp rule
+# 12. Penultimate-last-50-bp rule
 # ------------------------------------------------------------------------------
 
 get_penultimate_last50 <- function(
@@ -395,7 +420,7 @@ topmed$penultimate.last50bp <- mapply(
 
 
 # ------------------------------------------------------------------------------
-# 12. Full penultimate-exon indicator
+# 13. Full penultimate-exon indicator
 # ------------------------------------------------------------------------------
 
 topmed <- topmed %>%
@@ -415,7 +440,7 @@ topmed <- topmed %>%
 
 
 # ------------------------------------------------------------------------------
-# 13. Allele ratio and NMD outcome
+# 14. Allele ratio and NMD outcome
 # ------------------------------------------------------------------------------
 
 topmed <- topmed %>%
@@ -442,7 +467,7 @@ topmed <- topmed %>%
 
 
 # ------------------------------------------------------------------------------
-# 14. Retain one observation per variant
+# 15. Retain one observation per variant
 # ------------------------------------------------------------------------------
 
 set.seed(1234)
@@ -472,7 +497,7 @@ topmed_unique <- topmed_unique %>%
 
 
 # ------------------------------------------------------------------------------
-# 15. Multi-exon transcripts only
+# 16. Multi-exon transcripts only
 # ------------------------------------------------------------------------------
 
 topmed_unique <- topmed_unique %>%
@@ -482,7 +507,7 @@ topmed_unique <- topmed_unique %>%
 
 
 # ------------------------------------------------------------------------------
-# 16. Whole Blood expression filter
+# 17. Whole Blood expression filter
 # ------------------------------------------------------------------------------
 
 gtex_expression <- read.table(
@@ -516,7 +541,7 @@ topmed_unique <- topmed_unique %>%
 
 
 # ------------------------------------------------------------------------------
-# 17. Remove significant Whole Blood eGenes
+# 18. Remove significant Whole Blood eGenes
 # ------------------------------------------------------------------------------
 
 whole_blood_egenes <- read.table(
@@ -551,7 +576,7 @@ topmed_unique <- topmed_unique %>%
 
 
 # ------------------------------------------------------------------------------
-# 18. Remove imprinted genes
+# 19. Remove imprinted genes
 # ------------------------------------------------------------------------------
 
 imprinted_genes <- c(
@@ -586,7 +611,7 @@ topmed_annotated <- topmed_unique %>%
 
 
 # ------------------------------------------------------------------------------
-# 19. Completion summary
+# 20. Completion summary
 # ------------------------------------------------------------------------------
 
 message(
