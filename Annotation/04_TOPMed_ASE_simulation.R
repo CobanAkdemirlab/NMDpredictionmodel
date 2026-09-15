@@ -2,7 +2,8 @@
 # TOPMed ASE simulation for recurrent PTC variants
 #
 # Purpose:
-#   Construct one representative ASE value per annotated TOPMed PTC variant.
+# Construct one representative allele-specific expression (ASE) ratio
+# per annotated TOPMed PTC variant for model development.
 #
 #   Variants observed in one individual retain their observed ASE value.
 #   Variants observed in multiple individuals are repeatedly sampled across
@@ -244,9 +245,46 @@ df.sim <- bind_rows(
     df.sim.common
 )
 
-
 # ------------------------------------------------------------------------------
-# 11. Recalculate NMD class after ASE aggregation
+# 11. Define NMD outcome from representative allele ratio
+# ------------------------------------------------------------------------------
+
+# Allele ratio definition:
+#
+#   ALLELE.RAT = refCount / (refCount + altCount)
+#
+# Since totalCount = refCount + altCount:
+#
+#   ALLELE.RAT = refCount / totalCount
+#
+# For variants observed in one individual, ALLELE.RAT is calculated
+# directly from the observed read counts.
+#
+# For recurrent variants, ALLELE.RAT is calculated within each carrier
+# sampling iteration and the median across 100 iterations is retained as
+# the representative allele ratio.
+
+df.sim <- df.sim %>%
+    mutate(
+        NMD.ESCAPEE = case_when(
+
+            ALLELE.RAT >= 0.35 &
+                ALLELE.RAT <= 0.65 ~ "TRUE",
+
+            ALLELE.RAT > 0.65 ~ "FALSE",
+
+            TRUE ~ NA_character_
+        )
+    )
+# Allele-specific expression outcome:
+#   ALLELE.RAT = refCount / (refCount + altCount)
+#
+# NMD classification:
+#   0.35 <= ALLELE.RAT <= 0.65  -> NMD escape
+#   ALLELE.RAT > 0.65           -> NMD-sensitive / stronger NMD
+#   ALLELE.RAT < 0.35           -> excluded from binary outcome
+# ------------------------------------------------------------------------------
+# 12. Recalculate NMD class after ASE aggregation
 # ------------------------------------------------------------------------------
 
 df.sim <- df.sim %>%
@@ -263,7 +301,7 @@ df.sim <- df.sim %>%
 
 
 # ------------------------------------------------------------------------------
-# 12. QC summary
+# 13. QC summary
 # ------------------------------------------------------------------------------
 
 message(
