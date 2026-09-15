@@ -1,91 +1,279 @@
-#####
-library(parallel)
-library(dplyr)
-df.sub.new <- df
-df.sub.new.1 <- NULL
-
-#df.sub.new.1 <- NULL
-### 100 simulations
-missing_variants <- 0
-ind <- which(fr.var.can$totalCount<8)
-fr.var.can.new <- fr.var.can[-ind,]
-load('~/Downloads/TOPMed_stopgain_fulldf_feb1826.RData')
-
-### these ar 6,019 variants
-common.vrnts <- intersect(df$key,fr.var.can.new$key)
-## subset of fr.var.can.new and df on the common vrnts
-fr.var.can.new <- fr.var.can.new[which(fr.var.can.new$key%in%common.vrnts),]
-df <- df[which(df$key%in%common.vrnts),]
-
-### 
-
-
-fr <- data.frame(table(fr.var.can.new$variantID))
-ultra <- unique(fr[which(fr$Freq==1),'Var1'])
-common <- unique(fr[which(fr$Freq>1),'Var1'])
-
-df.rare <- df[which(df$variantID%in%ultra),]
-df.common <- df[which(df$variantID%in%common),]
+# ==============================================================================
+# TOPMed ASE simulation for recurrent PTC variants
+#
+# Purpose:
+#   Construct one representative ASE value per annotated TOPMed PTC variant.
+#
+#   Variants observed in one individual retain their observed ASE value.
+#   Variants observed in multiple individuals are repeatedly sampled across
+#   carriers and summarized using the median simulated ASE value.
+#
+# Input:
+#   1. Annotated TOPMed variant table (`df`)
+#   2. Per-individual ASE/genotype table (`fr.var.can`)
+#
+# Output:
+#   `df.sim` - one record per variant with representative ASE and NMD class
+#
+# Filtering:
+#   totalCount >= 8
+#
+# Simulation:
+#   100 iterations for recurrent variants
+# ==============================================================================
 
 
-### first
-
-for ( i in 1:length(ultra))
-{
-  ind <- which(fr.var.can.new$variantID%in%ultra[i])
-  df.rare[which(df.rare$variantID%in%ultra[i]),'refCount'] <- fr.var.can.new[ind,'refCount']
-  df.rare[which(df.rare$variantID%in%ultra[i]),'altCount'] <- fr.var.can.new[ind,'altCount']
-  df.rare[which(df.rare$variantID%in%ultra[i]),'totalCount'] <- fr.var.can.new[ind,'totalCount']
-  df.rare[which(df.rare$variantID%in%ultra[i]),'ALLELE.RAT'] <- df.rare[which(df.rare$variantID%in%ultra[i]),'refCount']/df.rare[which(df.rare$variantID%in%ultra[i]),'totalCount'] 
-  
-}
-
-### 
-
-df.sub.new <- df.common
-df.sub.new.1 <- NULL
-
-
-
-for (t in 1:100) {
-  
-  print(t)
-  df.sub.new <- df.common
-  for ( i in 1:nrow(df.sub.new)){
-    print(i)
-    #ind <- which(fr.var.can$variantID%in%df.sub.new$variantID[i]) #fr.var.can file is made at the beginning check Data tab
-    ind <- which(fr.var.can.new$variantID == df.sub.new$variantID[i])
-    
-  
-    
-    
-    ind.1 <- sample(ind,1) 
-    new.refcount <- fr.var.can.new$refCount[ind.1]
-    new.totalcount <- fr.var.can.new$totalCount[ind.1]
-    new.ALLELE.RAT <- new.refcount / new.totalcount
-    df.sub.new$ALLELE.RAT[i] <-  new.ALLELE.RAT
-    
-  }
-  #df.sub.new.changed <- df.sub.new
-  df.sub.new.1 <- rbind(df.sub.new,df.sub.new.1)
-  
-}
+# ------------------------------------------------------------------------------
+# 1. Required packages
+# ------------------------------------------------------------------------------
 
 library(dplyr)
 
-## new simulated data frame for common variants
-df.sim.common <- df.sub.new.1 %>% group_by(key) %>% mutate(ALLELE.RAT = median(ALLELE.RAT, na.rm=TRUE)) %>% distinct(.keep_all = TRUE)
+
+# ------------------------------------------------------------------------------
+# 2. Configuration
+# ------------------------------------------------------------------------------
+
+CONFIG <- list(
+    annotation_file = "/path/to/TOPMed_stopgain_fulldf_feb1826.RData",
+    min_total_count = 8,
+    n_simulations = 100,
+    random_seed = 1234
+)
 
 
+# ------------------------------------------------------------------------------
+# 3. Load annotated TOPMed dataset
+# ------------------------------------------------------------------------------
 
-## merge common and rare data and this is the new data frame
+load(CONFIG$annotation_file)
 
-df.sim <- rbind(df.rare,df.sim.common)
+# IMPORTANT:
+# The loaded file must create the annotated variant object `df`.
+# If possible, replace load() with readRDS() in the final workflow so that
+# the object name is explicit.
 
-### please define NMD.escape since allele.rat change
 
-df.sim$NMD.ESCAPEE <- rep('NA',nrow(df.sim))
-esc.ind <- which(df.sim$ALLELE.RAT<=0.65 & df.sim$ALLELE.RAT>=0.35)
-nonesc.ind <-  which(df.sim$ALLELE.RAT>0.65)
-df.sim[esc.ind,'NMD.ESCAPEE'] <- 'TRUE'
-df.sim[nonesc.ind,'NMD.ESCAPEE'] <- 'FALSE'
+# ------------------------------------------------------------------------------
+# 4. Filter ASE observations by sequencing depth
+# ------------------------------------------------------------------------------
+
+fr.var.can.filtered <- fr.var.can %>%
+    filter(
+        totalCount >= CONFIG$min_total_count
+    )
+
+message(
+    "ASE observations after depth filtering: ",
+    nrow(fr.var.can.filtered)
+)
+
+
+# ------------------------------------------------------------------------------
+# 5. Restrict annotation and ASE tables to shared variants
+# ------------------------------------------------------------------------------
+
+common_variants <- intersect(
+    df$key,
+    fr.var.can.filtered$key
+)
+
+fr.var.can.filtered <- fr.var.can.filtered %>%
+    filter(
+        key %in% common_variants
+    )
+
+df.filtered <- df %>%
+    filter(
+        key %in% common_variants
+    )
+
+message(
+    "Annotated variants with matching ASE data: ",
+    length(common_variants)
+)
+
+
+# ------------------------------------------------------------------------------
+# 6. Identify unique and recurrent variants
+# ------------------------------------------------------------------------------
+
+variant_frequency <- fr.var.can.filtered %>%
+    count(
+        variantID,
+        name = "n_carriers"
+    )
+
+unique_variants <- variant_frequency %>%
+    filter(
+        n_carriers == 1
+    ) %>%
+    pull(
+        variantID
+    )
+
+recurrent_variants <- variant_frequency %>%
+    filter(
+        n_carriers > 1
+    ) %>%
+    pull(
+        variantID
+    )
+
+message(
+    "Variants observed in one individual: ",
+    length(unique_variants)
+)
+
+message(
+    "Variants observed in multiple individuals: ",
+    length(recurrent_variants)
+)
+
+
+# ------------------------------------------------------------------------------
+# 7. Unique variants: retain observed ASE
+# ------------------------------------------------------------------------------
+
+df.unique <- df.filtered %>%
+    filter(
+        variantID %in% unique_variants
+    ) %>%
+    left_join(
+        fr.var.can.filtered %>%
+            filter(
+                variantID %in% unique_variants
+            ) %>%
+            select(
+                variantID,
+                refCount,
+                altCount,
+                totalCount
+            ),
+        by = "variantID"
+    ) %>%
+    mutate(
+        ALLELE.RAT = refCount / totalCount
+    )
+
+
+# ------------------------------------------------------------------------------
+# 8. Recurrent variants: Monte Carlo carrier sampling
+# ------------------------------------------------------------------------------
+
+set.seed(CONFIG$random_seed)
+
+simulated_iterations <- vector(
+    "list",
+    CONFIG$n_simulations
+)
+
+for (t in seq_len(CONFIG$n_simulations)) {
+
+    message(
+        "Simulation ",
+        t,
+        " of ",
+        CONFIG$n_simulations
+    )
+
+    simulated_iteration <- df.filtered %>%
+        filter(
+            variantID %in% recurrent_variants
+        )
+
+    simulated_iteration$ALLELE.RAT <- NA_real_
+
+    for (i in seq_len(nrow(simulated_iteration))) {
+
+        carrier_rows <- which(
+            fr.var.can.filtered$variantID ==
+                simulated_iteration$variantID[i]
+        )
+
+        sampled_row <- sample(
+            carrier_rows,
+            size = 1
+        )
+
+        sampled_ref <- fr.var.can.filtered$refCount[
+            sampled_row
+        ]
+
+        sampled_total <- fr.var.can.filtered$totalCount[
+            sampled_row
+        ]
+
+        simulated_iteration$ALLELE.RAT[i] <-
+            sampled_ref / sampled_total
+    }
+
+    simulated_iterations[[t]] <- simulated_iteration
+}
+
+
+# ------------------------------------------------------------------------------
+# 9. Summarize recurrent-variant simulations
+# ------------------------------------------------------------------------------
+
+df.sim.common <- bind_rows(
+    simulated_iterations
+) %>%
+    group_by(
+        key
+    ) %>%
+    mutate(
+        ALLELE.RAT = median(
+            ALLELE.RAT,
+            na.rm = TRUE
+        )
+    ) %>%
+    distinct(
+        key,
+        .keep_all = TRUE
+    ) %>%
+    ungroup()
+
+
+# ------------------------------------------------------------------------------
+# 10. Combine unique and recurrent variants
+# ------------------------------------------------------------------------------
+
+df.sim <- bind_rows(
+    df.unique,
+    df.sim.common
+)
+
+
+# ------------------------------------------------------------------------------
+# 11. Recalculate NMD class after ASE aggregation
+# ------------------------------------------------------------------------------
+
+df.sim <- df.sim %>%
+    mutate(
+        NMD.ESCAPEE = case_when(
+            ALLELE.RAT >= 0.35 &
+                ALLELE.RAT <= 0.65 ~ "TRUE",
+
+            ALLELE.RAT > 0.65 ~ "FALSE",
+
+            TRUE ~ NA_character_
+        )
+    )
+
+
+# ------------------------------------------------------------------------------
+# 12. QC summary
+# ------------------------------------------------------------------------------
+
+message(
+    "Final simulated dataset variants: ",
+    nrow(df.sim)
+)
+
+print(
+    table(
+        df.sim$NMD.ESCAPEE,
+        useNA = "ifany"
+    )
+)
