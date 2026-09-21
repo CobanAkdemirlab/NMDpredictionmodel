@@ -326,6 +326,7 @@ Model/TrunCat/
 │
 └── predict/
     └── external prediction workflow and prediction files
+
 ---
 
 ## 6. Visualization and Exploratory Analyses
