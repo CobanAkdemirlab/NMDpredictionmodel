@@ -53,24 +53,39 @@ library(dplyr)
 
 CONFIG <- list(
 
-    # Dataset-specific annotated input
-    input_file =
-        "/path/to/TOPMed_PTC_annotated.rds",
-
     # GTEx v8 gene median TPM
+    #
+    # Source:
+    # GTEx Portal -> Adult GTEx -> Bulk tissue expression
+    # https://www.gtexportal.org/home/downloads/adult-gtex/bulk_tissue_expression
+    #
+    # File used:
+    # GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct
+    #
+    # This file provides median gene expression across GTEx tissues,
+    # including Whole Blood.
     gtex_expression_file =
-        "/path/to/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt",
+        "/path/to/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct",
+
 
     # GTEx v8 Whole Blood eGenes
+    #
+    # Source:
+    # GTEx Portal -> Adult GTEx -> QTL
+    # https://gtexportal.org/home/downloads/adult-gtex/qtl
+    #
+    # File used:
+    # Whole_Blood.v8.egenes.txt
+    #
+    # Significant Whole Blood eGenes/eQTLs were identified using qval <= 0.05.
     gtex_egenes_file =
         "/path/to/Whole_Blood.v8.egenes.txt",
 
-    # Output
-    output_file =
-        "/path/to/TOPMed_PTC_filtered.rds",
 
-    # Minimum Whole Blood median expression
-    min_whole_blood_tpm = 1
+    min_whole_blood_tpm = 1,
+
+    output_file =
+        "/path/to/PTC_filtered_variants.rds"
 )
 
 
