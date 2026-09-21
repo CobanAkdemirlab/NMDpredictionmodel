@@ -15,6 +15,7 @@
 #   - threeUTR_length
 #   - fiveutr_length
 #   - log2newUTR
+#   - pLI
 #
 # Derived exploratory variables:
 #   - log2_CDS
@@ -24,6 +25,7 @@
 #   - log2_5utr
 #   - fiveUTR_length.cut
 #   - log2newUTR.cut
+#   - pLI.cat
 # ==============================================================================
 df$log2_CDS <- log2(df$cds_length)
 max_log2 <- max(df$log2_CDS, na.rm = TRUE)
@@ -84,5 +86,21 @@ df$log2newUTR.cut <- cut(
 # Check distribution
 table(df$log2newUTR.cut, useNA = "ifany")
 
+# ------------------------------------------------------------------------------
+# pLI categories
+# Used for exploratory analyses and visualization only.
+# The continuous pLI score is retained as the gene-level model feature.
+# ------------------------------------------------------------------------------
+
+df$pLI.cat <- NA_character_
+
+df$pLI.cat[df$pLI < 0.35] <-
+  "highly tolerant (pLI < 0.35)"
+
+df$pLI.cat[df$pLI >= 0.35 & df$pLI < 0.65] <-
+  "medium tolerant (0.35 <= pLI < 0.65)"
+
+df$pLI.cat[df$pLI >= 0.65] <-
+  "highly intolerant (pLI >= 0.65)"
 
 
