@@ -1,3 +1,58 @@
+"""
+10_EJC_occupancy_features.py
+
+Purpose
+-------
+Quantify experimentally supported exon junction complex (EJC) occupancy
+near the downstream exon junction associated with each PTC.
+
+EJC occupancy was assessed using experimentally determined EJC binding
+sites derived from RNA immunoprecipitation sequencing (RIP-seq).
+
+External EJC resource
+---------------------
+NCBI Gene Expression Omnibus (GEO):
+    GSE41154
+
+Source:
+    https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE41154
+
+The processed EJC intervals are supplied to this script through:
+
+    --ejc
+
+Expected format:
+    BED/TSV with at least:
+        chromosome
+        start
+        end
+
+Only the first three columns are required by the script.
+
+Feature definition
+------------------
+For each PTC-containing transcript, the nearest downstream exon junction
+is identified from GENCODE v26.
+
+A window is centered 24 nt upstream of that junction, corresponding to
+the expected EJC deposition region. EJC RIP-seq intervals are then
+intersected with a +/-15-nt window around this position.
+
+Features generated:
+    ejc_count_in_window
+    has_ejc_overlap
+
+where:
+    has_ejc_overlap = "yes" if one or more experimental EJC intervals
+                      overlap the window
+                    = "no" otherwise
+
+Shared across:
+    TOPMed
+    gnomAD
+    ClinVar
+    GREGoR
+"""
 #!/usr/bin/env python3
 import argparse, re, os
 import pandas as pd
