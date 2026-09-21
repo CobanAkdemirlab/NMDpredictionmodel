@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 10_EJC_occupancy_features.py
 
@@ -53,7 +55,7 @@ Shared across:
     ClinVar
     GREGoR
 """
-#!/usr/bin/env python3
+
 import argparse, re, os
 import pandas as pd
 import numpy as np
