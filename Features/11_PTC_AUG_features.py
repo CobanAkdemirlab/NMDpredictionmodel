@@ -1,7 +1,58 @@
 #!/usr/bin/env python3
 """
-Downstream AUG analysis with Kozak strength calculation
-Uses txnames to select the correct annotation from V3
+11_PTC_AUG_features.py
+
+Purpose
+-------
+Characterize downstream AUG codons and Kozak sequence context for
+premature termination codon (PTC) variants.
+
+For each variant, the transcript specified by `txnames` is matched to
+the corresponding ANNOVAR annotation in `V3`. Transcript and CDS
+coordinates are obtained from GENCODE v26, and the corresponding
+sequence is extracted from the GRCh38/hg38 reference genome.
+
+The script identifies downstream AUG codons in the original reading
+frame and the +1 and +2 reading frames and calculates their distances
+from the PTC. For the nearest in-frame downstream AUG, the surrounding
+Kozak sequence is extracted and scored. Kozak context at the original
+translation start site is also evaluated.
+
+External reference files
+------------------------
+1. GENCODE v26 primary assembly GTF
+   gencode.v26.primary_assembly.annotation.gtf.gz
+
+2. GRCh38/hg38 reference genome FASTA
+
+Inputs
+------
+Variant table containing:
+    variantID
+    txnames
+    V3
+
+Outputs
+-------
+Features include:
+    nearest_inframe_aug_distance_nt
+    nearest_plus1_frame_distance_nt
+    nearest_plus2_frame_distance_nt
+    has_plus1_frame_aug
+    has_plus2_frame_aug
+    nearest_inframe_kozak_score
+    nearest_inframe_kozak_strength
+    original_kozak_score
+    original_kozak_strength
+
+A local SQLite database is generated from the GENCODE annotation and
+used to cache transcript structures and sequences during analysis.
+
+Shared across:
+    TOPMed
+    gnomAD
+    ClinVar
+    GREGoR
 """
 
 import pandas as pd
