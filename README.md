@@ -296,20 +296,36 @@ Feature names and ordering are aligned to the TOPMed training feature set before
 
 ---
 
-## 5. Model Development
+## 5. Model Development and External Prediction
 
-Modeling scripts are located in `Model/`.
+Model-development and prediction workflows are located in `Model/`.
 
 ### TrunCat
 
-TrunCat is the primary classifier developed using the TOPMed ASE-derived NMD outcome and the integrated genomic and transcriptomic feature matrix.
+TrunCat is the primary classifier developed using the TOPMed ASE-derived NMD
+outcome and the integrated genomic and transcriptomic feature matrix.
 
-### TrunKitten
+The TrunCat directory separates **model development using TOPMed** from
+**application of the trained model to independent datasets**:
 
-TrunKitten is the reduced model developed for application where the complete TrunCat feature set is unavailable.
-
-Model evaluation includes discrimination and classification metrics and feature-importance analyses.
-
+```text id="f85n7z"
+Model/TrunCat/
+│
+├── data/
+│   └── TOPMed model-development datasets
+│
+├── notebooks/
+│   └── TrunCat data preparation, feature preprocessing,
+│       model training, evaluation, and interpretation
+│
+├── model/
+│   └── trained TrunCat model objects
+│
+├── results/
+│   └── model-development results
+│
+└── predict/
+    └── external prediction workflow and prediction files
 ---
 
 ## 6. Visualization and Exploratory Analyses
