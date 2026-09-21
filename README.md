@@ -1,3 +1,4 @@
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/CobanAkdemirlab/NMDpredictionmodel/blob/main/Run_NMDpredictionmodel_pipeline.ipynb)
 # NMDpredictionmodel
 
 This repository contains the computational workflow used to annotate premature termination codon (PTC) variants, generate genomic and transcriptomic features, and develop machine-learning models for predicting nonsense-mediated mRNA decay (NMD) efficiency.
