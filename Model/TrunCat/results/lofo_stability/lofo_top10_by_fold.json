@@ -1,0 +1,62 @@
+{
+  "0": [
+    "last.EJC",
+    "relativePTClocation",
+    "half_life_PC1",
+    "cdsseqs_AU_content",
+    "mut.exon",
+    "phylop_ptc_to_ejc_median",
+    "AmountExonsAfter",
+    "phastcons_new3utr_first200_median",
+    "cdsseqs_UC_content",
+    "MedianExpression_log2"
+  ],
+  "1": [
+    "last.EJC",
+    "relativePTClocation",
+    "half_life_PC1",
+    "cdsseqs_AU_content",
+    "mut.exon",
+    "AmountExonsAfter",
+    "phylop_ptc_to_ejc_median",
+    "cdsseqs_UC_content",
+    "phastcons_new3utr_first200_median",
+    "MedianExpression_log2"
+  ],
+  "2": [
+    "last.EJC",
+    "relativePTClocation",
+    "half_life_PC1",
+    "cdsseqs_AU_content",
+    "mut.exon",
+    "phylop_ptc_to_ejc_median",
+    "AmountExonsAfter",
+    "phastcons_new3utr_first200_median",
+    "cdsseqs_UC_content",
+    "cdsseq_AUcontentlast200"
+  ],
+  "3": [
+    "last.EJC",
+    "relativePTClocation",
+    "half_life_PC1",
+    "cdsseqs_AU_content",
+    "mut.exon",
+    "AmountExonsAfter",
+    "phylop_ptc_to_ejc_median",
+    "phastcons_new3utr_first200_median",
+    "cdsseq_AUcontentlast200",
+    "MedianExpression_log2"
+  ],
+  "4": [
+    "last.EJC",
+    "relativePTClocation",
+    "half_life_PC1",
+    "cdsseqs_AU_content",
+    "mut.exon",
+    "AmountExonsAfter",
+    "phylop_ptc_to_ejc_median",
+    "phastcons_new3utr_first200_median",
+    "MedianExpression_log2",
+    "first.200"
+  ]
+}

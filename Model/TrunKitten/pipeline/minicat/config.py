@@ -28,7 +28,6 @@ class PipelineConfig:
     chr_style:       str  = "auto"
     strip_versions:  bool = True
     n_workers:       int  = 4
-    cds_last_window: int  = 200
     new3utr_window:  int  = 200
 
     @classmethod
@@ -59,7 +58,6 @@ class PipelineConfig:
             chr_style       = o.get("chr_style", "auto"),
             strip_versions  = o.get("strip_versions", True),
             n_workers       = int(o.get("n_workers", 4)),
-            cds_last_window = int(o.get("cds_last_window", 200)),
             new3utr_window  = int(o.get("new3utr_window", 200)),
         )
         cfg._validate_inputs()

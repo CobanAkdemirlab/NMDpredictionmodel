@@ -1,9 +1,9 @@
 # TrunKitten Annotation Pipeline — Design & Specification
 
-**TrunKitten** is the reduced top-10 feature NMD-prediction model derived
+**TrunKitten** is the reduced top-8 feature NMD-prediction model derived
 from **TrunCat** (TRUNcation-aware Classifier using Annotated Transcripts).
 This pipeline annotates pre-called PTC / stop-gain variants with exactly
-the 10 features TrunKitten requires. All conventions are aligned with the
+the 8 features TrunKitten requires. All conventions are aligned with the
 TrunCat training-pipeline scripts (`conservation_score_extraction_v2.py`,
 `ejc_occupancy_txnames_parallel_modified.py`, and feature-generation code
 in the `CobanAkdemirLab/NMDpredictionmodel` repo), so TrunKitten predictions
@@ -148,10 +148,15 @@ feature as-trained (AU, UC) — no character substitution needed:
 "Content" = fraction of single bases in the set, **not** dinucleotides.
 N bases are excluded from numerator and denominator.
 
-### 1.6 `cdsseq_AUcontentlast200` — float in [0, 1]
+### 1.6 `cdsseq_AUcontentlast200` — REMOVED from TrunKitten
 
-Note: singular `cdsseq` here vs plural `cdsseqs` above. The existing feature
-files in the repo use this naming distinction; we preserve it.
+**Status: dropped from the TrunKitten feature set** (Sept 2026 CV-protocol
+correction and feature reduction from 10 → 8; see `trunkitten_features.json`).
+Still computed for TrunCat, which retains all ~730 features. `minicat` no
+longer computes this feature. The definitional rationale below is kept for
+historical reference.
+
+Note: singular `cdsseq` here vs plural `cdsseqs` above.
 
 **"last200" disambiguation.**
 
@@ -183,7 +188,11 @@ If CDS length < 200, the training pipeline zero-fills this (see
 `utr_zero_fill` in Notebook 02). We return the actual fraction and flag it;
 the inference user applies the same zero-fill rule before scoring.
 
-### 1.7 `cdsseqs_UC_content` — float in [0, 1]
+### 1.7 `cdsseqs_UC_content` — REMOVED from TrunKitten
+
+**Status: dropped from the TrunKitten feature set** (Sept 2026 CV-protocol
+correction and feature reduction from 10 → 8; see `trunkitten_features.json`).
+Still computed for TrunCat. `minicat` no longer computes this feature.
 
 Same as §1.5 but `count(T) + count(C)` / `total_non_N`. "UC" in the RNA
 alphabet = T+C on DNA. Computed on the full annotated CDS (§1.5 convention).
@@ -310,7 +319,7 @@ minicat_pipeline/
 | `sequence.py`    | Build spliced transcript string (strand-aware RC), extract CDS, compute AU/UC. |
 | `conservation.py`| Extract `new3utr_first200` and `ptc_to_ejc` intervals, query BigWig/BED, return median + QC length. |
 | `halflife.py`    | Load Excel; map `txnames → ENSG → half_life_PC1`.                              |
-| `features.py`    | Orchestrator: for each variant row, produce the 10-feature dict + QC fields.   |
+| `features.py`    | Orchestrator: for each variant row, produce the 8-feature dict + QC fields.   |
 | `qc.py`          | Assembles missing-flag columns, boundary-ambiguous markers, length QC.         |
 | `cli.py`         | Argparse entry point; parallelises per-variant annotation; writes outputs.     |
 
@@ -331,12 +340,11 @@ minicat_pipeline/
 
 ## 3. Region / sequence logic (consolidated)
 
-| Region                | Transcript-oriented definition                              | Genomic realisation                                                                                       |
-| --------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| new3utr_first200      | First 200 tx-bases strictly after the PTC position          | Clip PTC-containing exon at (ptc±1, boundary); concat downstream exon blocks in transcript order; take_first_N=200. |
-| ptc_to_ejc            | PTC+1 → nearest downstream exon-exon junction (within exon) | Single genomic interval within the PTC-containing exon: `[ptc+1, exon_end]` (+) or `[exon_start, ptc-1]` (−). |
-| Full CDS (for content)| start codon → base before stop codon                        | Concatenate CDS GTF intervals in transcript order; RC if − strand.                                        |
-| CDS last 200 (content)| Last 200 tx-bases of full CDS                               | Slice `[-200:]` of the reconstructed CDS string.                                                           |
+| Region | Transcript-oriented definition | Genomic realisation |
+|---|---|---|
+| new3utr_first200 | First 200 tx-bases strictly after the PTC position | Clip PTC-containing exon at (ptc±1, boundary); concat downstream exon blocks in transcript order; take_first_N=200. |
+| ptc_to_ejc | PTC+1 → nearest downstream exon-exon junction (within exon) | Single genomic interval within the PTC-containing exon: `[ptc+1, exon_end]` (+) or `[exon_start, ptc-1]` (−). |
+| Full CDS (for content) | start codon → base before stop codon | Concatenate CDS GTF intervals in transcript order; RC if − strand. |
 
 BigWig mechanics: all regions are converted to BED half-open `[start0, end0)`
 segments only at the query boundary. Medians are computed over the
@@ -417,7 +425,6 @@ hand-computed one (write out exon sequences manually).
 | `txnames` version differs from GTF                     | Normalise both sides by stripping `.N`          | Report `version_mismatch=True` (informational only).                                         |
 | Input `position` not inside any exon of `txnames`      | Exon-containing lookup returns empty            | Skip variant; emit NaN row; log. This is a data quality issue — PTC should be exonic.        |
 | PTC at exon boundary                                   | `position == exon_start` or `position == exon_end` | `boundary_ambiguous=True`; still assigned by inclusive rule.                              |
-| `cds_length < 200` for `cdsseq_AUcontentlast200`       | Measured CDS length < 200                       | Return actual fraction; set `cds_length_short_flag=True`. Consumer applies training's zero-fill. |
 | new3utr region empty (shouldn't happen if not last exon — but sanity check) | `take_first_N` returns empty list     | Set `new3utr_empty=True`; features → NaN.                                                    |
 | `ptc_to_ejc` empty (last.exon)                         | `last.EJC == 'last.exon'`                       | Expected; `ptc_to_ejc_empty=True`; feature → NaN.                                            |
 | All BigWig values NaN in region                        | `valid_bp == 0`                                 | Feature → NaN; `any_conservation_missing=True`.                                              |
@@ -434,7 +441,7 @@ One row per input variant, column order:
 4. `gene` *(str)* — as provided
 5. `gene_id` *(str)* — ENSG from GTF (version-stripped)
 6. `strand` *(str)* — `+` or `−`
-7. **Features (10):**
+7. **Features (8):**
    - `last.EJC` *(str / category)*
    - `relativePTClocation` *(float64)*
    - `half_life_PC1` *(float64 or NaN)*
@@ -443,17 +450,15 @@ One row per input variant, column order:
    - `phastcons_new3utr_first200_median` *(float64 or NaN)*
    - `phylop_ptc_to_ejc_median` *(float64 or NaN)*
    - `AmountExonsAfter` *(int)*
-   - `cdsseq_AUcontentlast200` *(float64)*
-   - `cdsseqs_UC_content` *(float64)*
 8. **QC** *(all written to `qc_report.tsv`)*: `exon_count`, `coding_exon_count`,
    `ptc_transcript_pos`, `transcript_length`, `cds_length`, `downstream_new3utr_len`,
-   `boundary_ambiguous`, `tx_not_in_gtf`, `version_mismatch`, `cds_length_short_flag`,
+   `boundary_ambiguous`, `tx_not_in_gtf`, `version_mismatch`,
    `new3utr_empty`, `ptc_to_ejc_empty`, `half_life_missing`, `any_conservation_missing`.
-
+   
 Example row (tab-separated, abbreviated):
 ```
-variant_id           txnames             transcript_id_used   gene   gene_id           strand  last.EJC               relativePTClocation   half_life_PC1   cdsseqs_AU_content   mut.exon   phastcons_new3utr_first200_median   phylop_ptc_to_ejc_median   AmountExonsAfter   cdsseq_AUcontentlast200   cdsseqs_UC_content
-chr8_41977233_C_A    ENST00000265713     ENST00000265713.8    KAT6A  ENSG00000083168   -       upstream               0.3421                1.0523          0.511                5          0.982                                1.845                      12                 0.495                     0.498
+variant_id           txnames             transcript_id_used   gene   gene_id           strand  last.EJC               relativePTClocation   half_life_PC1   cdsseqs_AU_content   mut.exon   phastcons_new3utr_first200_median   phylop_ptc_to_ejc_median   AmountExonsAfter
+chr8_41977233_C_A    ENST00000265713     ENST00000265713.8    KAT6A  ENSG00000083168   -       upstream               0.3421                1.0523          0.511                5          0.982                                1.845                      12
 ```
 
 ---

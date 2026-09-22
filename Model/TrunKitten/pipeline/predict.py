@@ -1,4 +1,4 @@
-"""Predict NMD escape with TrunKitten — the reduced top-10 feature CatBoost
+"""Predict NMD escape with TrunKitten — the reduced top-8 feature CatBoost
 model derived from TrunCat.
 
 Consumes the annotated.tsv produced by the TrunKitten annotation CLI
@@ -8,28 +8,35 @@ variant_id, escape_prob, escape_pred_at_youden.
 Usage:
     python predict.py \
         --annotated outputs/annotated.tsv \
-        --model     models/trunkitten/trunkitten.pkl \
-        --metadata  results/trunkitten/top10_features.json \
+        --model     Model/TrunKitten/model/trunkitten.pkl \
+        --metadata  Model/TrunKitten/model/trunkitten_features.json \
         --out       outputs/predictions.tsv \
-        --training-medians results/trunkitten/training_medians.json  # optional
+        --training-medians /path/to/Model/TrunCat/predict/training_medians.json  # optional
 
 File paths shown above reflect the TrunKitten naming. If your saved
 artifacts still use the historical `reduced_top10` naming, pass those
 paths — the script only cares about the file contents, not the names.
 
-The training-medians JSON lets this script apply the SAME imputation /
-zero-fill rules that the TrunCat training pipeline applied (Notebook 02).
-If omitted, missing values are left as NaN and CatBoost's native NaN
-handling is used. Either is defensible; using training medians reproduces
-training behaviour exactly. Recommended for external-cohort scoring.
+The training-medians JSON lets this script apply the SAME imputation
+that the TrunCat training pipeline applied (Notebook 02). If omitted,
+missing values are left as NaN and CatBoost's native NaN handling is
+used. Either is defensible; using training medians reproduces training
+behaviour exactly. Recommended for external-cohort scoring.
 
-Expected training_medians.json schema:
+training_medians.json is a flat {column: median} mapping, shared with
+TrunCat's own predict notebooks — e.g.:
 {
-  "median_impute": {"half_life_PC1": 1.1303, ...},
-  "zero_fill":     ["cdsseq_AUcontentlast200",
-                    "phastcons_new3utr_first200_median",
-                    "phylop_ptc_to_ejc_median"]
+  "CADD_phred": 37.0,
+  "MedianExpression_log2": 3.83112733120502,
+  "half_life_PC1": 1.130304981974255,
+  "readthrough_score_hek293t": 67.86
 }
+Only columns present in the model's feature set are applied; for
+TrunKitten that's half_life_PC1.
+
+Zero-fill columns (regions structurally absent, e.g. a variant with no
+new-3'UTR) aren't medians and aren't in that file — they're listed
+separately below as ZERO_FILL_COLUMNS.
 """
 from __future__ import annotations
 import argparse
@@ -42,25 +49,40 @@ import numpy as np
 import pandas as pd
 from catboost import Pool
 
+ZERO_FILL_COLUMNS = [
+    "phastcons_new3utr_first200_median",
+    "phylop_ptc_to_ejc_median",
+]
+
 
 def apply_training_imputation(
     X: pd.DataFrame, medians_path: Path | None,
 ) -> tuple[pd.DataFrame, dict]:
-    """Apply training-time median imputation / zero-fill. Return (X_imputed, report)."""
+    """Apply training-time median imputation + zero-fill. Return (X_imputed, report).
+
+    medians_path is a flat {column: median} JSON (shared with TrunCat's
+    predict notebooks). Zero-fill columns are ZERO_FILL_COLUMNS, module-level,
+    since they're not medians and aren't in that file.
+    """
     report = {"imputed": {}, "zero_filled": {}}
     if medians_path is None:
         return X, report
 
-    spec = json.loads(Path(medians_path).read_text())
+    medians = json.loads(Path(medians_path).read_text())
+    if not isinstance(medians, dict) or any(isinstance(v, (dict, list)) for v in medians.values()):
+        raise ValueError(
+            f"{medians_path} does not look like a flat {{column: median}} mapping "
+            f"(got: {medians})."
+        )
 
-    for col, med in spec.get("median_impute", {}).items():
+    for col, med in medians.items():
         if col in X.columns:
             n_miss = X[col].isna().sum()
             if n_miss:
                 X[col] = X[col].fillna(float(med))
                 report["imputed"][col] = {"n": int(n_miss), "value": float(med)}
 
-    for col in spec.get("zero_fill", []):
+    for col in ZERO_FILL_COLUMNS:
         if col in X.columns:
             n_miss = X[col].isna().sum()
             if n_miss:
@@ -73,7 +95,7 @@ def apply_training_imputation(
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description="TrunKitten scorer — predicts NMD escape using the "
-                    "reduced top-10 feature model derived from TrunCat."
+                    "reduced top-8 feature model derived from TrunCat."
     )
     ap.add_argument("--annotated", required=True,
                     help="TSV from the TrunKitten annotation CLI "
@@ -81,12 +103,12 @@ def main(argv=None) -> int:
     ap.add_argument("--model",     required=True,
                     help=".pkl of the TrunKitten CatBoost model")
     ap.add_argument("--metadata",  required=True,
-                    help="top10_features.json (feature order, dtypes, threshold)")
+                    help="trunkitten_features.json (feature order, dtypes, threshold)")
     ap.add_argument("--out",       required=True,
                     help="output predictions TSV")
     ap.add_argument("--training-medians", default=None,
-                    help="optional JSON with TrunCat training-time "
-                         "median/zero-fill rules")
+                    help="optional flat {column: median} JSON with TrunCat "
+                         "training-time medians (e.g. training_medians.json)")
     args = ap.parse_args(argv)
 
     # --- Load feature metadata & model ---

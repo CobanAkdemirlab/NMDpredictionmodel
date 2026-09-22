@@ -30,5 +30,4 @@ options:
   chr_style: auto         # auto | with_chr | no_chr — how to harmonise chrom names against BigWig/GTF
   strip_versions: true    # strip '.N' suffix from ENST/ENSG before matching
   n_workers: 4            # number of parallel workers for per-variant annotation
-  cds_last_window: 200    # for cdsseq_AUcontentlast200
   new3utr_window: 200     # for new3utr_first200

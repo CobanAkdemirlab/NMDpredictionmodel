@@ -47,12 +47,11 @@ class AnnotationResult:
     boundary_ambiguous: bool
     tx_not_in_gtf: bool
     version_mismatch: bool
-    cds_length_short_flag: bool
     new3utr_empty: bool
     ptc_to_ejc_empty: bool
     half_life_missing: bool
     any_conservation_missing: bool
-    # features
+    # features (8 — TrunKitten Sept 2026 feature set)
     last_EJC: Optional[str]
     relativePTClocation: Optional[float]
     half_life_PC1: Optional[float]
@@ -61,11 +60,9 @@ class AnnotationResult:
     phastcons_new3utr_first200_median: Optional[float]
     phylop_ptc_to_ejc_median: Optional[float]
     AmountExonsAfter: Optional[int]
-    cdsseq_AUcontentlast200: Optional[float]
-    cdsseqs_UC_content: Optional[float]
 
     def to_feature_row(self) -> Dict[str, Any]:
-        """10-feature row with the canonical column names (including dots)."""
+        """8-feature row with the canonical column names (including dots)."""
         return {
             "variant_id": self.variant_id,
             "txnames": self.txnames,
@@ -81,8 +78,6 @@ class AnnotationResult:
             "phastcons_new3utr_first200_median": self.phastcons_new3utr_first200_median,
             "phylop_ptc_to_ejc_median": self.phylop_ptc_to_ejc_median,
             "AmountExonsAfter": self.AmountExonsAfter,
-            "cdsseq_AUcontentlast200": self.cdsseq_AUcontentlast200,
-            "cdsseqs_UC_content": self.cdsseqs_UC_content,
         }
 
     def to_qc_row(self) -> Dict[str, Any]:
@@ -101,7 +96,6 @@ class AnnotationResult:
             "boundary_ambiguous": self.boundary_ambiguous,
             "tx_not_in_gtf": self.tx_not_in_gtf,
             "version_mismatch": self.version_mismatch,
-            "cds_length_short_flag": self.cds_length_short_flag,
             "new3utr_empty": self.new3utr_empty,
             "ptc_to_ejc_empty": self.ptc_to_ejc_empty,
             "half_life_missing": self.half_life_missing,
@@ -120,7 +114,6 @@ class FeatureAnnotator:
         phylop: ConservationSource,
         halflife: HalfLifeTable,
         strip_versions: bool = True,
-        cds_last_window: int = 200,
         new3utr_window: int = 200,
     ):
         self.tx_index = tx_index
@@ -129,7 +122,6 @@ class FeatureAnnotator:
         self.phylop = phylop
         self.halflife = halflife
         self.strip_versions = strip_versions
-        self.cds_last_window = cds_last_window
         self.new3utr_window = new3utr_window
 
     def annotate(self, row: Dict[str, Any]) -> AnnotationResult:
@@ -186,10 +178,8 @@ class FeatureAnnotator:
         n_after  = amount_exons_after(tx, loc.exon_rank)
         coding_exon_count = sum(tx.coding_exon_flags())
 
-        # --- CDS sequence composition features ---
-        cds_comp = compute_cds_composition(
-            self.fasta, tx, last_window=self.cds_last_window,
-        )
+        # --- CDS sequence composition feature ---
+        cds_comp = compute_cds_composition(self.fasta, tx)
 
         # --- half_life_PC1 ---
         # Primary key is GTF-derived ENSG; gene-symbol fallback handles cases
@@ -238,7 +228,6 @@ class FeatureAnnotator:
             boundary_ambiguous=loc.boundary_ambiguous,
             tx_not_in_gtf=False,
             version_mismatch=version_mismatch,
-            cds_length_short_flag=cds_comp["cds_length_short_flag"],
             new3utr_empty=new3utr_empty,
             ptc_to_ejc_empty=ptc_to_ejc_empty,
             half_life_missing=half_life_missing,
@@ -251,8 +240,6 @@ class FeatureAnnotator:
             phastcons_new3utr_first200_median=phc_new3,
             phylop_ptc_to_ejc_median=phy_p2e,
             AmountExonsAfter=n_after,
-            cdsseq_AUcontentlast200=cds_comp["cdsseq_AUcontentlast200"],
-            cdsseqs_UC_content=cds_comp["cdsseqs_UC_content"],
         )
 
     def _nan_result(self, variant_id, txname, gene, **kw) -> AnnotationResult:
@@ -263,14 +250,13 @@ class FeatureAnnotator:
             ptc_transcript_pos=None, transcript_length=None, cds_length=None,
             downstream_new3utr_len=None,
             boundary_ambiguous=False, tx_not_in_gtf=False, version_mismatch=False,
-            cds_length_short_flag=False, new3utr_empty=False, ptc_to_ejc_empty=False,
+            new3utr_empty=False, ptc_to_ejc_empty=False,
             half_life_missing=True, any_conservation_missing=True,
             last_EJC=None, relativePTClocation=None, half_life_PC1=None,
             cdsseqs_AU_content=None, mut_exon=None,
             phastcons_new3utr_first200_median=None,
             phylop_ptc_to_ejc_median=None,
-            AmountExonsAfter=None, cdsseq_AUcontentlast200=None,
-            cdsseqs_UC_content=None,
+            AmountExonsAfter=None,
         )
         base.update(kw)
         return AnnotationResult(**base)
