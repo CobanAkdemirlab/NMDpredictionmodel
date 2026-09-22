@@ -1,0 +1,13 @@
+feature,lofo_appearance_count,lofo_stability_frac,in_global_top10,in_shipped_8,unanimous_stable
+AmountExonsAfter,5,1.0,True,True,True
+cdsseqs_AU_content,5,1.0,True,True,True
+half_life_PC1,5,1.0,True,True,True
+last.EJC,5,1.0,True,True,True
+mut.exon,5,1.0,True,True,True
+phastcons_new3utr_first200_median,5,1.0,True,True,True
+phylop_ptc_to_ejc_median,5,1.0,True,True,True
+relativePTClocation,5,1.0,True,True,True
+MedianExpression_log2,4,0.8,True,False,False
+cdsseqs_UC_content,3,0.6,True,False,False
+cdsseq_AUcontentlast200,2,0.4,False,False,False
+first.200,1,0.2,False,False,False

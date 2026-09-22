@@ -51,6 +51,7 @@ data:
 
   # Notebook 02 output / Notebook 03 input
   cleaned:           "data/TOPMed_cleaned.csv"
+  gene_ids:          "data/TOPMed_gene_ids.csv"
   feature_list:      "data/final_feature_list.csv"
 
 # ==============================================================================
@@ -68,7 +69,7 @@ model:
 
   # CatBoost hyperparameters (Optuna-optimized)
   catboost:
-    iterations: 1294
+    iterations: 250
     learning_rate: 0.03072886163898516
     depth: 8
     l2_leaf_reg: 6.426732194425712
@@ -77,7 +78,6 @@ model:
     border_count: 155
     min_data_in_leaf: 29
     verbose: False
-    early_stopping_rounds: 50
 
 # ==============================================================================
 # OUTPUT PATHS

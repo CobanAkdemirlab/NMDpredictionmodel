@@ -4,14 +4,28 @@
 =====================================
 Cleans and selects features from the merged dataset for model training.
 
+`key` and `GENE_ID` are snapshotted into a separate `gene_ids` table
+immediately after load (positionally aligned with X/y via the same row
+mask), before either is dropped as an "identifier" by the manual drop
+rules below — this is intentional, not a bug to fix. `GENE_ID` is used
+downstream (03_model_training.py) to group CV folds by gene
+(StratifiedGroupKFold), so variants from the same gene aren't split
+across train/test. Only `key` is reattached to the final cleaned dataset;
+`GENE_ID` lives solely in the separate gene_ids.csv.
+
+Because this reattachment is positional (not a merge on `key`), no step
+between the snapshot and the final save may add, drop, or reorder ROWS
+(dropping COLUMNS is fine and expected throughout). Tripwire assertions
+below enforce this.
+
 Steps:
-  1. Load merged data (from script 01)
+  1. Load merged data (from script 01); snapshot key + GENE_ID
   2. Apply domain-knowledge manual drop rules
   3. Automated quality checks (duplicates, zero-variance, high correlation)
   4. Prepare and impute categorical features
-  5. Save cleaned dataset and feature list
+  5. Save cleaned dataset (+ key), feature list, and gene_ids.csv
 
-Output: data/TOPMed_cleaned.csv, data/final_feature_list.csv
+Output: data/TOPMed_cleaned.csv, data/final_feature_list.csv, data/TOPMed_gene_ids.csv
 
 Usage:
     python 02_feature_cleaning_and_selection.py
@@ -79,17 +93,34 @@ def load_data(config):
     df = pd.read_csv(PATH_INPUT)
     print(f"✓ Loaded: {df.shape}")
 
+    for col in ("key", "GENE_ID"):
+        if col not in df.columns:
+            raise KeyError(
+                f"'{col}' not found in merged input ({PATH_INPUT}) — "
+                "required for CV grouping downstream (03_model_training.py)."
+            )
+
     y_full = df[TARGET].map({"TRUE": 1, "FALSE": 0, True: 1, False: 0}).astype("float")
     mask = y_full.notna()
     y = y_full.loc[mask].astype(int).reset_index(drop=True)
     X = df.loc[mask].drop(columns=[TARGET]).reset_index(drop=True)
+    # Snapshot key + GENE_ID now, before drop_manual removes them from X as
+    # "identifiers" below. Same mask, same reset_index(drop=True) as X/y, so
+    # row i here is row i of X/y for the rest of this script.
+    gene_ids = df.loc[mask, ["key", "GENE_ID"]].reset_index(drop=True)
 
     print(f"Valid samples: {len(y)}")
     print(f"  Escapees: {y.sum()} ({y.sum()/len(y)*100:.1f}%)")
     print(f"  NMD: {(~y.astype(bool)).sum()} ({(~y.astype(bool)).sum()/len(y)*100:.1f}%)")
     print(f"Features: {X.shape[1]}")
 
-    return X, y, TARGET, CORRELATION_THRESHOLD, CATEGORICAL_FEATURES, RBP_PREFIXES, config
+    assert len(gene_ids) == len(X) == len(y), "row-count mismatch right after load"
+    assert gene_ids["key"].is_unique, "duplicate `key` values in merged input"
+    assert gene_ids["GENE_ID"].notna().all(), "some rows have no GENE_ID"
+    print(f"✓ Snapshotted key/GENE_ID for {len(gene_ids)} rows "
+          f"({gene_ids['GENE_ID'].nunique()} unique genes)")
+
+    return X, y, gene_ids, TARGET, CORRELATION_THRESHOLD, CATEGORICAL_FEATURES, RBP_PREFIXES, config
 
 
 # ==============================================================================
@@ -110,221 +141,271 @@ def apply_manual_drops(X, CATEGORICAL_FEATURES, RBP_PREFIXES):
         print("✓ Renamed 'LOEUF_cat' → 'loeuf_cat'")
 
     drop_manual = {
-        # ── Identifiers / unnamed columns ──────────────────────────────────────
-        "TxName":               "Identifier - transcript name",
-        "variantID":            "Identifier - variant ID",
-        "ensembl_gene_id":      "Identifier - redundant with GENE_ID",
-        "txnames":              "Identifier - transcript name duplicate",
-        "gene":                 "Identifier - redundant with GENE_ID",
-        "gene_id_gencode":      "Identifier - redundant Gencode gene ID",
-        "hgnc_symbol":          "Identifier - gene symbol redundant with GENE_ID",
-        "GENE_ID":              "Identifier - gene ID",
-        "key":                  "Identifier - composite key",
-        "Var1":                 "Identifier - leftover R rowname",
-        "V1":                   "Identifier - leftover row indices",
-        "V2":                   "Identifier - unnamed column",
-        "V3":                   "Identifier - unnamed column",
-        "V4":                   "Identifier - unnamed column",
-        "V5":                   "Identifier - unnamed column",
-        "V6":                   "Identifier - unnamed column",
-        "V7":                   "Identifier - unnamed column",
-        "V8":                   "Identifier - unnamed column",
 
-        # ── Genomic coordinates ────────────────────────────────────────────────
-        "contig":               "Identifier - chromosome name",
-        "Chromosome":           "Identifier - duplicate of contig",
-        "CHROM":                "Identifier - duplicate of contig",
-        "position":             "Identifier - raw genomic position",
-        "POS":                  "Identifier - duplicate of position",
-        "Start":                "Identifier - genomic start coordinate",
-        "End":                  "Identifier - genomic end coordinate",
-        "Strand":               "Identifier - strand direction",
-        "nearest_junction":     "Identifier - raw EJC junction coordinate; engineered features kept",
-        "downstream_start":     "Identifier - raw coordinate, not a model feature",
-        "coding.pos":           "Identifier - absolute CDS nucleotide position; redundant with relativePTClocation",
+    # ── Identifiers / unnamed columns ─────────────────────────────────────────
+    "TxName":               "Identifier - transcript name",
+    "variantID":            "Identifier - variant ID",
+    "ensembl_gene_id":      "Identifier - redundant with GENE_ID",
+    "txnames":              "Identifier - transcript name duplicate",
+    "gene":                 "Identifier - redundant with GENE_ID",
+    "gene_id_gencode":      "Identifier - redundant Gencode gene ID",
+    "hgnc_symbol":          "Identifier - gene symbol redundant with GENE_ID",
+    "GENE_ID":              "Identifier - gene ID",
+    "key":                  "Identifier - composite key",
+    "Var1":                 "Identifier - leftover R rowname",
+    "V1":                   "Identifier - leftover row indices",
+    "V2":                   "Identifier - unnamed column",
+    "V3":                   "Identifier - unnamed column",
+    "V4":                   "Identifier - unnamed column",
+    "V5":                   "Identifier - unnamed column",
+    "V6":                   "Identifier - unnamed column",
+    "V7":                   "Identifier - unnamed column",
+    "V8":                   "Identifier - unnamed column",
 
-        # ── Raw allele sequences ───────────────────────────────────────────────
-        "refAllele":            "Identifier - raw reference allele sequence",
-        "REF_len":              "Identifier - check to make sure all SNV",
-        "altAllele":            "Identifier - raw alternate allele sequence",
-        "ALT_len":              "Identifier - check to make sure all SNV",
-        "REF_ALLELE":           "Identifier - duplicate ref allele",
-        "ALT_ALLELE":           "Identifier - duplicate alt allele",
+    # ── Genomic coordinates ───────────────────────────────────────────────────
+    "contig":               "Identifier - chromosome name",
+    "Chromosome":           "Identifier - duplicate of contig",
+    "CHROM":                "Identifier - duplicate of contig",
+    "position":             "Identifier - raw genomic position",
+    "POS":                  "Identifier - duplicate of position",
+    "Start":                "Identifier - genomic start coordinate",
+    "End":                  "Identifier - genomic end coordinate",
+    "Strand":               "Identifier - strand direction",
+    "nearest_junction":     "Identifier - raw EJC junction coordinate; engineered features kept",
+    "downstream_start":     "Identifier - raw coordinate, not a model feature",
+    "coding.pos":           "Identifier - absolute CDS nucleotide position; redundant with relativePTClocation",  # FIXED: was referencing PTC.2.start/end which are now dropped
 
-        # ── Sequencing QC / technical ──────────────────────────────────────────
-        "refCount":             "Leaky - raw read counts used to compute ALLELE.RAT",
-        "altCount":             "Leaky - raw read counts used to compute ALLELE.RAT",
-        "totalCount":           "Leaky - raw read counts used to compute ALLELE.RAT",
-        "lowMAPQDepth":         "Technical QC - not biological",
-        "lowBaseQDepth":        "Technical QC - not biological",
-        "rawDepth":             "Technical QC - not biological",
-        "otherBases":           "Technical QC - not biological",
-        "improperPairs":        "Technical QC - not biological",
-        "ZYG":                  "Sample-level zygosity",
-        "FILTER":               "Sequencing filter flag - not biological",
-        "sample":               "Identifier - sample GT",
+    # ── Raw allele sequences ──────────────────────────────────────────────────
+    "refAllele":            "Identifier - raw reference allele sequence",
+    "REF_len":              "Identifier - check to make sure all SNV",
+    "altAllele":            "Identifier - raw alternate allele sequence",
+    "ALT_len":              "Identifier - check to make sure all SNV",
+    "REF_ALLELE":           "Identifier - duplicate ref allele",
+    "ALT_ALLELE":           "Identifier - duplicate alt allele",
 
-        # ── Target / leaky ─────────────────────────────────────────────────────
-        "ALLELE.RAT":           "Leaky - directly used to compute NMD.ESCAPEE target",
-        "NMD.ESCAPEE":          "Target variable",
+    # ── Sequencing QC / technical ─────────────────────────────────────────────
+    "refCount":             "Leaky - raw read counts used to compute ALLELE.RAT",
+    "altCount":             "Leaky - raw read counts used to compute ALLELE.RAT",
+    "totalCount":           "Leaky - raw read counts used to compute ALLELE.RAT",
+    "lowMAPQDepth":         "Technical QC - not biological",
+    "lowBaseQDepth":        "Technical QC - not biological",
+    "rawDepth":             "Technical QC - not biological",
+    "otherBases":           "Technical QC - not biological",
+    "improperPairs":        "Technical QC - not biological",
+    "ZYG":                  "Sample-level zygosity",
+    "FILTER":               "Sequencing filter flag - not biological",
+    "sample":               "Identifier - sample GT",
 
-        # ── Scores not applicable to stopgain variants ─────────────────────────
-        "REVEL_score":          "Not applicable - missense pathogenicity score for stopgain variants",
+    # ── Target / leaky ────────────────────────────────────────────────────────
+    "ALLELE.RAT":           "Leaky - directly used to compute NMD.ESCAPEE target",
+    "NMD.ESCAPEE":          "Target variable",
 
-        # ── Leaky canonical NMD rule encodings ─────────────────────────────────
-        "last.exon":            "Leaky - direct boolean encoding of canonical NMD last-exon rule",
-        "penultimate.exon":     "Leaky - redundant with last.EJC, encodes NMD rule directly",
+    # ── Scores not applicable to stopgain variants ────────────────────────────
+    "REVEL_score":          "Not applicable - missense pathogenicity score for stopgain variants",
 
-        # ── Leaky allele frequency ─────────────────────────────────────────────
-        "Freq":                 "Leaky - allele frequency from same TOPMed experiment as target",
-        "Freq.cat":             "Leaky - binned allele frequency from same TOPMed experiment as target",
-        "Freq_old":             "deprecated leaky allele frequency",
+    # ── Leaky canonical NMD rule encodings ────────────────────────────────────
+    "last.exon":            "Leaky - direct boolean encoding of canonical NMD last-exon rule",
+    "penultimate.exon":     "Leaky - redundant with last.EJC, encodes NMD rule directly",
 
-        # ── PTC positional raw distances ───────────────────────────────────────
-        "PTC.2.start":            "Redundant - proxies for cds_length (r=0.762)",
-        "PTC.2.end":              "Redundant - proxies for cds_length (r=0.712)",
-        "PTC_dist_exon_start_0b": "Redundant - relPTC_exon captures within-exon position independently",
-        "PTC.2.EJC":              "Redundant - relPTC_exon captures within-exon position independently",
+    # ── Leaky allele frequency ────────────────────────────────────────────────
+    "Freq":                 "Leaky - allele frequency from same TOPMed experiment as target",  
+    "Freq.cat":             "Leaky - binned allele frequency from same TOPMed experiment as target",
+    "Freq_old":             "deprecated leaky allele frequency",
 
-        # ── Binned PTC distance features ───────────────────────────────────────
-        "PTC.2.EJC.binning":      "Redundant - continuous proxied length.mutated.exon (r=0.838)",
-        "PTC.2.start.binning":    "Redundant - continuous proxied cds_length (r=0.762)",
-        "PTC.2.end.binning":      "Redundant - continuous proxied cds_length (r=0.712)",
+    # ── PTC positional raw distances: proxy for length features ──────────────
+    # Confirmed by correlation analysis:
+    # PTC.2.start r=0.762 with cds_length; PTC.2.end r=0.712 with cds_length
+    # PTC_dist_exon_start_0b r=0.765 with length.mutated.exon
+    # PTC.2.EJC r=0.838 with length.mutated.exon
+    # Normalised versions (relativePTClocation, relPTC_exon) are kept — r<0.02 with length features
+    "PTC.2.start":            "Redundant - proxies for cds_length (r=0.762); relativePTClocation captures actual position independently (r=0.017 with cds_length)",
+    "PTC.2.end":              "Redundant - proxies for cds_length (r=0.712); mirror of PTC.2.start",
+    "PTC_dist_exon_start_0b": "Redundant - relPTC_exon captures within-exon position independently",
+    "PTC.2.EJC":              "Redundant - Redundant - relPTC_exon captures within-exon position independently",
 
-        # ── Other redundant features ───────────────────────────────────────────
-        "aug_distance_nt":        "Redundant - aug_distance_category kept",
-        "cds_exons":              "Identifier - raw exon boundary string; not usable by CatBoost",
-        "CADD_raw":               "Redundant - CADD_phred is the interpretable score",
-        "downstream":             "Redundant - last.EJC kept",
-        "EJC.downstream":         "Redundant with last.EJC",
+    # ── Binned PTC distance features (continuous versions also dropped above) ──
+    "PTC.2.EJC.binning":      "Redundant - both continuous and binned dropped; continuous proxied length.mutated.exon (r=0.838)",  
+    "PTC.2.start.binning":    "Redundant - both continuous and binned dropped; continuous proxied cds_length (r=0.762)",           
+    "PTC.2.end.binning":      "Redundant - both continuous and binned dropped; continuous proxied cds_length (r=0.712)",           
 
-        # ── CDS length ─────────────────────────────────────────────────────────
-        "cds_length":             "Redundant - log2_CDS kept",
-        "cds_length.cut":         "Redundant - continuous log2_CDS kept",
+    # ── Other redundant features ──────────────────────────────────────────────
+    "aug_distance_nt":        "Redundant - aug_distance_category kept (better feature importance in v3.2)",
+    "cds_exons":              "Identifier - raw exon boundary string; not usable by CatBoost",
+    "CADD_raw":               "Redundant - CADD_phred is the interpretable score",
+    "downstream":             "Redundant - last.EJC kept",
 
-        # ── UTR lengths ────────────────────────────────────────────────────────
-        "threeUTR_length":        "Redundant - log2_3utr kept",
-        "fiveutr_length":         "Redundant - log2_5utr kept",
-        "threeUTR_length.cut":    "Redundant - continuous log2_3utr kept",
-        "fiveUTR_length.cut":     "Redundant - continuous log2_5utr kept",
-        "newUTR_length":          "Redundant - log2newUTR kept",
-        "log2newUTR.cut":         "Redundant - continuous log2newUTR kept",
+    # ── EJC.downstream: not present in importances, dropping ─────────────────
+    "EJC.downstream":         "Redundant with last.EJC", #added EJC.downstream.cut with new bins 
 
-        # ── Constraint scores ──────────────────────────────────────────────────
-        "pLI":                    "Redundant - categorical pLI.cat kept",
-        "oe_lof_upper":           "Redundant - categorical LOEUF_cat kept",
+    # ── CDS length ────────────────────────────────────────────────────────────
+    "cds_length":               "Redundant - log2_CDS kept",
+    "cds_length.cut":         "Redundant - continuous log2_CDS kept",
 
-        # ── Exon count ─────────────────────────────────────────────────────────
-        "exon_count":             "Redundant - AmountExonsAfter more informative",
-        "NCexonsnum":             "Redundant - AmountExonsAfter more informative",
+    # ── UTR lengths ───────────────────────────────────────────────────────────
+    "threeUTR_length":        "Redundant - log2_3utr kept",
+    "fiveutr_length":         "Redundant -  log2_5utr kept",
+    "threeUTR_length.cut":    "Redundant - continuous log2_3utr kept",
+    "fiveUTR_length.cut":     "Redundant - continuous log2_5utr kept",
+    "newUTR_length":          "Redundant - log2newUTR kept",
+    "log2newUTR.cut":         "Redundant - continuous log2newUTR kept",
 
-        # ── Readthrough ────────────────────────────────────────────────────────
-        "readthrough_category_hek293t": "Redundant - readthrough_score_hek293t has higher importance",
+    # ── Constraint scores ─────────────────────────────────────────────────────
+    "pLI":                    "Redundant - categorical pLI.cat kept",
+    "oe_lof_upper":           "Redundant - categorical LOEUF_cat kept",
 
-        # ── EJC overlap binary ─────────────────────────────────────────────────
-        "has_ejc_overlap":        "Redundant - ejc_count_in_window more informative; binary loses dose-response signal",
+    # ── Exon count ────────────────────────────────────────────────────────────
+    "exon_count":             "Redundant - AmountExonsAfter more informative (1.02 vs 0.51)",
+    "NCexonsnum":             "Redundant - AmountExonsAfter more informative (1.02 vs 0.12)",
 
-        # ── Expression ─────────────────────────────────────────────────────────
-        "MedianExpression":       "Leaky - correlates with totalCount (r=0.387); MedianExpression_log2 kept",
-        "Whole.Blood":            "Leaky - correlates with refCount (r=0.336); MedianExpression_log2 kept",
+    # ── Readthrough ───────────────────────────────────────────────────────────
+    "readthrough_category_hek293t": "Redundant - readthrough_score_hek293t has higher importance (0.64 vs 0.23)",
 
-        # ── 5'UTR regional composition: keep whole + first100 + last100 ────────
-        "fiveUTR_AUcontentfirst200": "Redundant - r=0.878 with fiveUTR_AU_content whole; first100 kept",
-        "fiveUTR_AUcontentlast200":  "Redundant - r=0.885 with fiveUTR_AU_content whole; last100 kept",
-        "fiveUTR_UCcontentfirst200": "Redundant - first100 kept for proximal signal",
-        "fiveUTR_UCcontentlast200":  "Redundant - last100 kept for distal signal",
+    # ── EJC overlap binary ────────────────────────────────────────────────────
+    "has_ejc_overlap":        "Redundant - ejc_count_in_window more informative (0.92 vs 0.02); binary loses dose-response signal",
 
-        # ── 3'UTR AU regional composition: keep whole + first100 + last100 ─────
-        "ThreeUTR_AUcontentfirst200": "Redundant - r=0.941 with ThreeUTR_AUcontentfirst100; first100 kept",
-        "ThreeUTR_AUcontentlast200":  "Redundant - r=0.901 with ThreeUTR_AUcontentlast100; last100 kept",
+    # ── Expression: raw correlates with read depth ────────────────────────────
+    "MedianExpression":       "Leaky - correlates with totalCount (r=0.387) and altCount (r=0.420); MedianExpression_log2 kept",
 
-        # ── 3'UTR UC regional composition: keep whole + first100 + last100 ─────
-        "ThreeUTR_UCcontentfirst200": "Redundant - first100 kept; consistent with AU strategy",
-        "ThreeUTR_UCcontentlast200":  "Redundant - last100 kept; consistent with AU strategy",
+    # ── Whole.Blood: borderline read-count correlation ────────────────────────
+    # r=0.336 with refCount; MedianExpression_log2 already captures expression at rank 4
+    "Whole.Blood":            "Leaky - correlates with refCount (r=0.336); MedianExpression_log2 kept as cleaner expression proxy",
 
-        # ── Length binning ─────────────────────────────────────────────────────
-        "length.mutated.exon.binning": "Redundant - continuous length.mutated.exon kept",
+    # ── 5'UTR regional composition: keep whole + first100 + last100 ──────────────
+    # first200/last200 correlate r>0.878 with whole; 100nt windows kept for positional resolution
+    "fiveUTR_AUcontentfirst200": "Redundant - r=0.878 with fiveUTR_AU_content whole; first100 kept for proximal signal",
+    "fiveUTR_AUcontentlast200":  "Redundant - r=0.885 with fiveUTR_AU_content whole; last100 kept for distal signal",
+    "fiveUTR_UCcontentfirst200": "Redundant - first100 kept for proximal signal; whole fiveUTR_UC_content kept",
+    "fiveUTR_UCcontentlast200":  "Redundant - last100 kept for distal signal; whole fiveUTR_UC_content kept",
 
-        # ── Zero importance RBP features — run 1 (62 features) ─────────────────
-        "ptc_pm100.CPEB4": "Zero importance across all CV folds",
-        "ptc_pm100.RBM25": "Zero importance across all CV folds",
-        "utr3_200.ZNF638": "Zero importance across all CV folds",
-        "newutr_200.PUM2": "Zero importance across all CV folds",
-        "utr3_200.HNRNPL": "Zero importance across all CV folds",
-        "newutr_200.RBM41": "Zero importance across all CV folds",
-        "ptc_pm100.RBM3": "Zero importance across all CV folds",
-        "ejc_pm100.FXR1": "Zero importance across all CV folds",
-        "newutr_200.MSI1": "Zero importance across all CV folds",
-        "utr3_all.RBM3": "Zero importance across all CV folds",
-        "utr3_200.KHDRBS3": "Zero importance across all CV folds",
-        "ptc_to_ejc.MSI1": "Zero importance across all CV folds",
-        "ejc_pm100.RBMS3": "Zero importance across all CV folds",
-        "ptc_pm100.HNRNPU": "Zero importance across all CV folds",
-        "ptc_to_ejc.HNRNPU": "Zero importance across all CV folds",
-        "ejc_pm100.HNRNPD": "Zero importance across all CV folds",
-        "newutr_200.HNRNPC": "Zero importance across all CV folds",
-        "ejc_pm100.HNRNPC": "Zero importance across all CV folds",
-        "ejc_pm100.MATR3": "Zero importance across all CV folds",
-        "newutr_200.HNRNPD": "Zero importance across all CV folds",
-        "ptc_pm100.HNRNPD": "Zero importance across all CV folds",
-        "ejc_pm100.ANKHD1": "Zero importance across all CV folds",
-        "ptc_to_ejc.RBM46": "Zero importance across all CV folds",
-        "ejc_pm100.RBM41": "Zero importance across all CV folds",
-        "ptc_to_ejc.EIF4B": "Zero importance across all CV folds",
-        "ptc_to_ejc.RBM41": "Zero importance across all CV folds",
-        "ejc_pm100.ZCRB1": "Zero importance across all CV folds",
-        "ptc_to_ejc.RBM3": "Zero importance across all CV folds",
-        "ejc_pm100.RBM42": "Zero importance across all CV folds",
+    # ── 3'UTR AU regional composition: keep whole + first100 + last100 ────────────
+    # first100 vs first200 r=0.941; last100 vs last200 r=0.901; last200 vs whole r=0.856
+    # first200/last200 dropped as redundant with the 100nt windows which are less correlated with whole
+    "ThreeUTR_AUcontentfirst200": "Redundant - r=0.941 with ThreeUTR_AUcontentfirst100; first100 kept",
+    "ThreeUTR_AUcontentlast200":  "Redundant - r=0.901 with ThreeUTR_AUcontentlast100; last100 kept",
 
-        # ── Zero importance RBP features — run 2 (47 features) ─────────────────
-        "ptc_to_ejc.ZNF638": "Zero importance across all CV folds",
-        "newutr_200.KHSRP": "Zero importance across all CV folds",
-        "ptc_to_ejc.ZFP36L2": "Zero importance across all CV folds",
-        "newutr_200.IGHMBP2": "Zero importance across all CV folds",
-        "newutr_200.IGF2BP2": "Zero importance across all CV folds",
-        "newutr_200.IGF2BP1": "Zero importance across all CV folds",
-        "newutr_200.ANKHD1": "Zero importance across all CV folds",
-        "newutr_200.RBMS3": "Zero importance across all CV folds",
-        "newutr_200.CPEB2": "Zero importance across all CV folds",
-        "ptc_to_ejc.SRP14": "Zero importance across all CV folds",
-        "newutr_200.RBFOX1": "Zero importance across all CV folds",
-        "newutr_200.KHDRBS2": "Zero importance across all CV folds",
-        "ptc_pm100.U2AF2": "Zero importance across all CV folds",
-        "ptc_to_ejc.RBMS1": "Zero importance across all CV folds",
-        "ptc_to_ejc.AKAP1": "Zero importance across all CV folds",
-        "ejc_pm100.HNRNPU": "Zero importance across all CV folds",
-        "ejc_pm100.HNRNPM": "Zero importance across all CV folds",
-        "ptc_pm100.PABPC3": "Zero importance across all CV folds",
-        "ejc_pm100.HNRNPDL": "Zero importance across all CV folds",
-        "ptc_to_ejc.ANKHD1": "Zero importance across all CV folds",
-        "ejc_pm100.HNRNPA1L2": "Zero importance across all CV folds",
-        "ptc_to_ejc.AGO2": "Zero importance across all CV folds",
-        "newutr_200.ZFP36L2": "Zero importance across all CV folds",
-        "utr3_200.MSI1": "Zero importance across all CV folds",
-        "utr3_200.PPRC1": "Zero importance across all CV folds",
-        "utr3_200.RBM14": "Zero importance across all CV folds",
-        "ejc_pm100.CELF5": "Zero importance across all CV folds",
-        "ptc_pm100.ZFP36L2": "Zero importance across all CV folds",
-        "utr3_200.RBMS1": "Zero importance across all CV folds",
-        "ptc_pm100.KHDRBS2": "Zero importance across all CV folds",
-        "ejc_pm100.KHDRBS3": "Zero importance across all CV folds",
-        "ejc_pm100.MSI1": "Zero importance across all CV folds",
-        "ptc_to_ejc.ELAVL3": "Zero importance across all CV folds",
-        "ptc_to_ejc.ERI1": "Zero importance across all CV folds",
-        "ptc_pm100.HNRNPC": "Zero importance across all CV folds",
-        "ptc_pm100.HNRNPA1L2": "Zero importance across all CV folds",
-        "ptc_pm100.TUT1": "Zero importance across all CV folds",
-        "ptc_to_ejc.HNRNPC": "Zero importance across all CV folds",
-        "ejc_pm100.RBM28": "Zero importance across all CV folds",
-        "ejc_pm100.RBM3": "Zero importance across all CV folds",
-        "utr3_200.A1CF": "Zero importance across all CV folds",
-        "ejc_pm100.RBM46": "Zero importance across all CV folds",
-        "ptc_pm100.DAZAP1": "Zero importance across all CV folds",
-        "ejc_pm100.SAMD4A": "Zero importance across all CV folds",
-        "ptc_to_ejc.KHDRBS2": "Zero importance across all CV folds",
-        "ptc_to_ejc.KHDRBS3": "Zero importance across all CV folds",
-        "ptc_pm100.FUS": "Zero importance across all CV folds",
-    }
+    # ── 3'UTR UC regional composition: keep whole + first100 + last100 ────────────
+    # No pairs above r=0.85 so all UC regional variants were previously kept
+    # Now applying same 100nt window strategy for consistency — drop 200nt versions
+    "ThreeUTR_UCcontentfirst200": "Redundant - first100 kept for proximal signal; consistent with AU strategy",
+    "ThreeUTR_UCcontentlast200":  "Redundant - last100 kept for distal signal; consistent with AU strategy",
+
+
+    # ── Length binning ────────────────────────────────────────────────────────
+    "length.mutated.exon.binning": "Redundant - continuous length.mutated.exon kept",
+
+    # ── Zero importance RBP features — run 1 (62 features) ───────────────────
+    "ptc_pm100.CPEB4":          "Zero importance across all CV folds",
+    "ptc_pm100.RBM25":          "Zero importance across all CV folds",
+    "utr3_200.ZNF638":          "Zero importance across all CV folds",
+    "newutr_200.PUM2":          "Zero importance across all CV folds",
+    "utr3_200.HNRNPL":          "Zero importance across all CV folds",
+    "newutr_200.RBM41":         "Zero importance across all CV folds",
+    "ptc_pm100.RBM3":           "Zero importance across all CV folds",
+    "ejc_pm100.FXR1":           "Zero importance across all CV folds",
+    "newutr_200.MSI1":          "Zero importance across all CV folds",
+    "utr3_all.RBM3":            "Zero importance across all CV folds",
+    "utr3_200.KHDRBS3":         "Zero importance across all CV folds",
+    "ptc_to_ejc.MSI1":          "Zero importance across all CV folds",
+    "ejc_pm100.RBMS3":          "Zero importance across all CV folds",
+    "ptc_pm100.AKAP1":          "Zero importance across all CV folds",
+    "utr3_200.KHSRP":           "Zero importance across all CV folds",
+    "ptc_pm100.AGO2":           "Zero importance across all CV folds",
+    "ptc_pm100.A1CF":           "Zero importance across all CV folds",
+    "ptc_pm100.YBX2":           "Zero importance across all CV folds",
+    "ptc_to_ejc.PUM2":          "Zero importance across all CV folds",
+    "newutr_200.ZNF638":        "Zero importance across all CV folds",
+    "utr3_200.AKAP1":           "Zero importance across all CV folds",
+    "ejc_pm100.EIF4B":          "Zero importance across all CV folds",
+    "newutr_200.RBM46":         "Zero importance across all CV folds",
+    "ptc_to_ejc.AGO1":          "Zero importance across all CV folds",
+    "newutr_200.RBMS1":         "Zero importance across all CV folds",
+    "ejc_pm100.AGO2":           "Zero importance across all CV folds",
+    "newutr_200.TUT1":          "Zero importance across all CV folds",
+    "newutr_200.AGO2":          "Zero importance across all CV folds",
+    "ptc_to_ejc.NONO":          "Zero importance across all CV folds",
+    "ejc_pm100.ZFP36L2":        "Zero importance across all CV folds",
+    "ejc_pm100.ZNF638":         "Zero importance across all CV folds",
+    "ejc_pm100.IGHMBP2":        "Zero importance across all CV folds",
+    "ptc_pm100.PABPN1":         "Zero importance across all CV folds",
+    "ptc_to_ejc.SSB":           "Zero importance across all CV folds",
+    "newutr_200.CELF5":         "Zero importance across all CV folds",
+    "newutr_200.CNOT4":         "Zero importance across all CV folds",
+    "newutr_200.DAZAP1":        "Zero importance across all CV folds",
+    "ptc_pm100.MSI1":           "Zero importance across all CV folds",
+    "ejc_pm100.RBMS1":          "Zero importance across all CV folds",
+    "ptc_to_ejc.SNRNP70":       "Zero importance across all CV folds",
+    "newutr_200.FUS":           "Zero importance across all CV folds",
+    "ptc_to_ejc.HNRNPD":        "Zero importance across all CV folds",
+    "utr3_200.TUT1":            "Zero importance across all CV folds",
+    "newutr_200.FXR1":          "Zero importance across all CV folds",
+    "ptc_pm100.IGF2BP3":        "Zero importance across all CV folds",
+    "ptc_pm100.RBM41":          "Zero importance across all CV folds",
+    "ptc_pm100.HNRNPU":         "Zero importance across all CV folds",
+    "ptc_to_ejc.HNRNPU":        "Zero importance across all CV folds",
+    "ejc_pm100.HNRNPD":         "Zero importance across all CV folds",
+    "newutr_200.HNRNPC":        "Zero importance across all CV folds",
+    "ejc_pm100.HNRNPC":         "Zero importance across all CV folds",
+    "ejc_pm100.MATR3":          "Zero importance across all CV folds",
+    "newutr_200.HNRNPD":        "Zero importance across all CV folds",
+    "ptc_pm100.HNRNPD":         "Zero importance across all CV folds",
+    "ejc_pm100.ANKHD1":         "Zero importance across all CV folds",
+    "ptc_to_ejc.RBM46":         "Zero importance across all CV folds",
+    "ejc_pm100.RBM41":          "Zero importance across all CV folds",
+    "ptc_to_ejc.EIF4B":         "Zero importance across all CV folds",
+    "ptc_to_ejc.RBM41":         "Zero importance across all CV folds",
+    "ejc_pm100.ZCRB1":          "Zero importance across all CV folds",
+    "ptc_to_ejc.RBM3":          "Zero importance across all CV folds",
+    "ejc_pm100.RBM42":          "Zero importance across all CV folds",
+
+    # ── Zero importance RBP features — run 2 (47 features) ───────────────────
+    "ptc_to_ejc.ZNF638":        "Zero importance across all CV folds",
+    "newutr_200.KHSRP":         "Zero importance across all CV folds",
+    "ptc_to_ejc.ZFP36L2":       "Zero importance across all CV folds",
+    "newutr_200.IGHMBP2":       "Zero importance across all CV folds",
+    "newutr_200.IGF2BP2":       "Zero importance across all CV folds",
+    "newutr_200.IGF2BP1":       "Zero importance across all CV folds",
+    "newutr_200.ANKHD1":        "Zero importance across all CV folds",
+    "newutr_200.RBMS3":         "Zero importance across all CV folds",
+    "newutr_200.CPEB2":         "Zero importance across all CV folds",
+    "ptc_to_ejc.SRP14":         "Zero importance across all CV folds",
+    "newutr_200.RBFOX1":        "Zero importance across all CV folds",
+    "newutr_200.KHDRBS2":       "Zero importance across all CV folds",
+    "ptc_pm100.U2AF2":          "Zero importance across all CV folds",
+    "ptc_to_ejc.RBMS1":         "Zero importance across all CV folds",
+    "ptc_to_ejc.AKAP1":         "Zero importance across all CV folds",
+    "ejc_pm100.HNRNPU":         "Zero importance across all CV folds",
+    "ejc_pm100.HNRNPM":         "Zero importance across all CV folds",
+    "ptc_pm100.PABPC3":         "Zero importance across all CV folds",
+    "ejc_pm100.HNRNPDL":        "Zero importance across all CV folds",
+    "ptc_to_ejc.ANKHD1":        "Zero importance across all CV folds",
+    "ejc_pm100.HNRNPA1L2":      "Zero importance across all CV folds",
+    "ptc_to_ejc.AGO2":          "Zero importance across all CV folds",
+    "newutr_200.ZFP36L2":       "Zero importance across all CV folds",
+    "utr3_200.MSI1":            "Zero importance across all CV folds",
+    "utr3_200.PPRC1":           "Zero importance across all CV folds",
+    "utr3_200.RBM14":           "Zero importance across all CV folds",
+    "ejc_pm100.CELF5":          "Zero importance across all CV folds",
+    "ptc_pm100.ZFP36L2":        "Zero importance across all CV folds",
+    "utr3_200.RBMS1":           "Zero importance across all CV folds",
+    "ptc_pm100.KHDRBS2":        "Zero importance across all CV folds",
+    "ejc_pm100.KHDRBS3":        "Zero importance across all CV folds",
+    "ejc_pm100.MSI1":           "Zero importance across all CV folds",
+    "ptc_to_ejc.ELAVL3":        "Zero importance across all CV folds",
+    "ptc_to_ejc.ERI1":          "Zero importance across all CV folds",
+    "ptc_pm100.HNRNPC":         "Zero importance across all CV folds",
+    "ptc_pm100.HNRNPA1L2":      "Zero importance across all CV folds",
+    "ptc_pm100.TUT1":           "Zero importance across all CV folds",
+    "ptc_to_ejc.HNRNPC":        "Zero importance across all CV folds",
+    "ejc_pm100.RBM28":          "Zero importance across all CV folds",
+    "ejc_pm100.RBM3":           "Zero importance across all CV folds",
+    "utr3_200.A1CF":            "Zero importance across all CV folds",
+    "ejc_pm100.RBM46":          "Zero importance across all CV folds",
+    "ptc_pm100.DAZAP1":         "Zero importance across all CV folds",
+    "ejc_pm100.SAMD4A":         "Zero importance across all CV folds",
+    "ptc_to_ejc.KHDRBS2":       "Zero importance across all CV folds",
+    "ptc_to_ejc.KHDRBS3":       "Zero importance across all CV folds",
+    "ptc_pm100.FUS":            "Zero importance across all CV folds",
+}
 
     # Rule 1: AU/GC content — drop GC, keep AU
     print("\nRule 1: AU/GC content pairs")
@@ -641,6 +722,11 @@ def print_summary(X, X_cleaned, X_final, features_to_drop, automated_drops,
     else:
         print(f"⚠️  GC content features remaining: {len(gc_remaining)} (should be 0!)")
 
+    if 'PTC.2.EJC' in X_final.columns:
+        print(f"\n✓ PTC.2.EJC retained (preferred measure)")
+    else:
+        print(f"\n⚠️  PTC.2.EJC missing!")
+
     if 'PTC_dist_exon_end_0b' in X_final.columns:
         print(f"⚠️  PTC_dist_exon_end_0b still present (should be dropped)")
     else:
@@ -670,16 +756,26 @@ def print_summary(X, X_cleaned, X_final, features_to_drop, automated_drops,
 # SAVE
 # ==============================================================================
 
-def save_outputs(X_final, y, cat_features, feature_missingness, TARGET, config):
+def save_outputs(X_final, y, gene_ids, cat_features, feature_missingness, TARGET, config):
     print("\n" + "=" * 80)
     print("SAVING RESULTS")
     print("=" * 80)
 
-    PATH_OUTPUT = config['data']['cleaned']
-    PATH_FEATURES = config['data']['feature_list']
+    PATH_OUTPUT    = config['data']['cleaned']
+    PATH_FEATURES  = config['data']['feature_list']
+    PATH_GENE_IDS  = config['data']['gene_ids']
+
+    # Positional reattachment of `key` — no row has been added, dropped, or
+    # reordered since gene_ids was snapshotted in load_data(), only columns.
+    assert len(gene_ids) == len(X_final) == len(y), (
+        f"row-count mismatch at save time: gene_ids={len(gene_ids)}, "
+        f"X_final={len(X_final)}, y={len(y)} — a row was added/dropped/reordered "
+        "somewhere between load_data() and here; `key` reattachment would be wrong."
+    )
 
     final_df = X_final.copy()
     final_df[TARGET] = y.values
+    final_df["key"] = gene_ids["key"].values
 
     Path(PATH_OUTPUT).parent.mkdir(parents=True, exist_ok=True)
     final_df.to_csv(PATH_OUTPUT, index=False)
@@ -687,6 +783,12 @@ def save_outputs(X_final, y, cat_features, feature_missingness, TARGET, config):
     print(f"  Rows: {len(final_df)}")
     print(f"  Columns: {final_df.shape[1]}")
 
+    Path(PATH_GENE_IDS).parent.mkdir(parents=True, exist_ok=True)
+    gene_ids.to_csv(PATH_GENE_IDS, index=False)
+    print(f"✓ Gene IDs saved: {PATH_GENE_IDS}")
+    print(f"  Rows: {len(gene_ids)}  ({gene_ids['GENE_ID'].nunique()} unique genes)")
+
+    # feature_list describes trainable columns only — `key` isn't one.
     feature_list = pd.DataFrame({
         'feature': X_final.columns,
         'dtype': [str(X_final[col].dtype) for col in X_final.columns],
@@ -742,7 +844,8 @@ def main():
     try:
         config = load_config(args.config)
 
-        X, y, TARGET, CORRELATION_THRESHOLD, CATEGORICAL_FEATURES, RBP_PREFIXES, config = load_data(config)
+        (X, y, gene_ids, TARGET, CORRELATION_THRESHOLD,
+         CATEGORICAL_FEATURES, RBP_PREFIXES, config) = load_data(config)
 
         X_cleaned, features_to_drop, gc_features_to_drop, rbp_features, rbp_prefixes = apply_manual_drops(
             X, CATEGORICAL_FEATURES, RBP_PREFIXES
@@ -759,7 +862,7 @@ def main():
         print_summary(X, X_cleaned, X_final, features_to_drop, automated_drops,
                       rbp_features, rbp_prefixes, gc_features_to_drop)
 
-        save_outputs(X_final, y, cat_features, feature_missingness, TARGET, config)
+        save_outputs(X_final, y, gene_ids, cat_features, feature_missingness, TARGET, config)
 
         print("\n" + "=" * 80)
         print("COMPLETE! 🎉")

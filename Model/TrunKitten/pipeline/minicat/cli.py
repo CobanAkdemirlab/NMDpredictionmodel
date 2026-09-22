@@ -1,13 +1,13 @@
 """TrunKitten annotation CLI — command-line entry point.
 
-Annotates PTC / stop-gain variants with the 10 features required by
+Annotates PTC / stop-gain variants with the 8 features required by
 TrunKitten, the reduced NMD-prediction model derived from TrunCat.
 
 Usage:
     python -m minicat.cli --config config/config.yaml
 
 Output:
-    outputs/annotated.tsv   — 10-feature table (one row per input variant)
+    outputs/annotated.tsv   — 8-feature table (one row per input variant)
     outputs/qc_report.tsv   — QC columns per variant
     outputs/run.log         — log file
 """
@@ -89,7 +89,6 @@ def run(cfg: PipelineConfig) -> None:
         phylop=phylop,
         halflife=hl,
         strip_versions=cfg.strip_versions,
-        cds_last_window=cfg.cds_last_window,
         new3utr_window=cfg.new3utr_window,
     )
 
@@ -117,7 +116,6 @@ def run(cfg: PipelineConfig) -> None:
     log.info(f"  tx_not_in_gtf:            {qc_df['tx_not_in_gtf'].sum():,}")
     log.info(f"  version_mismatch:         {qc_df['version_mismatch'].sum():,}")
     log.info(f"  boundary_ambiguous:       {qc_df['boundary_ambiguous'].sum():,}")
-    log.info(f"  cds_length_short_flag:    {qc_df['cds_length_short_flag'].sum():,}")
     log.info(f"  new3utr_empty:            {qc_df['new3utr_empty'].sum():,}")
     log.info(f"  ptc_to_ejc_empty:         {qc_df['ptc_to_ejc_empty'].sum():,}")
     log.info(f"  half_life_missing:        {qc_df['half_life_missing'].sum():,}")
@@ -130,7 +128,7 @@ def run(cfg: PipelineConfig) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description="TrunKitten PTC annotation pipeline "
-                    "(reduced top-10 feature NMD model; package: minicat)"
+                    "(reduced top-8 feature NMD model; package: minicat)"
     )
     ap.add_argument("--config", required=True, help="path to config YAML")
     ap.add_argument("--log-level", default="INFO")

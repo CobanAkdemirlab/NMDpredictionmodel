@@ -9,6 +9,10 @@ Kept as a module rather than inlined in the notebook so:
 All functions assume:
 - y_true: 1 = escape, 0 = NMD-sensitive
 - All score columns: higher = more escape
+
+Bootstrap CIs can be gene-clustered: pass `groups` (one gene ID per row) and
+whole genes are resampled instead of individual variants. This matches the
+gene-grouped cross-validation used to train the models.
 """
 
 from __future__ import annotations
@@ -41,22 +45,48 @@ def bootstrap_metric(
     n_boot: int = 1000,
     seed: int = 42,
     ci: float = 0.95,
+    groups: Optional[np.ndarray] = None,
 ) -> Tuple[float, float, float]:
     """
-    Bootstrap a paired metric. Returns (point_estimate, lower, upper).
+    Bootstrap a metric. Returns (point_estimate, lower, upper).
 
-    Resampling is over variant indices (paired) — same indices apply to all
-    models when called repeatedly with the same seed, so CIs are comparable.
+    groups=None  -> resample individual variants.
+    groups given -> resample whole groups (genes) with replacement, keeping all
+                    variants of each drawn gene. Use this when variants within
+                    a gene are correlated (they are here).
+
+    The RNG depends only on `seed` and the group structure, so calling this
+    repeatedly with the same seed and the same rows gives the same resamples
+    for every model.
     """
     y_true = np.asarray(y_true)
     y_score = np.asarray(y_score)
     point = metric_fn(y_true, y_score)
 
     rng = np.random.default_rng(seed)
-    n = len(y_true)
+
+    if groups is None:
+        n = len(y_true)
+
+        def draw():
+            return rng.integers(0, n, size=n)
+    else:
+        groups = np.asarray(groups)
+        codes, uniq = pd.factorize(groups)
+        if (codes < 0).any():
+            raise ValueError("groups contains NaN; every row needs a gene ID")
+        order = np.argsort(codes, kind="stable")
+        bounds = np.searchsorted(codes[order], np.arange(len(uniq) + 1))
+        by_group = [order[bounds[g]:bounds[g + 1]] for g in range(len(uniq))]
+        n_groups = len(uniq)
+
+        def draw():
+            picked = rng.integers(0, n_groups, size=n_groups)
+            return np.concatenate([by_group[g] for g in picked])
+
     boot_vals = np.empty(n_boot, dtype=np.float64)
     for i in range(n_boot):
-        idx = rng.integers(0, n, size=n)
+        idx = draw()
         try:
             boot_vals[i] = metric_fn(y_true[idx], y_score[idx])
         except ValueError:
@@ -69,12 +99,14 @@ def bootstrap_metric(
     return float(point), float(lo), float(hi)
 
 
-def auc_with_ci(y_true, y_score, n_boot=1000, seed=42):
-    return bootstrap_metric(y_true, y_score, roc_auc_score, n_boot, seed)
+def auc_with_ci(y_true, y_score, n_boot=1000, seed=42, groups=None):
+    return bootstrap_metric(y_true, y_score, roc_auc_score, n_boot, seed,
+                            groups=groups)
 
 
-def pr_auc_with_ci(y_true, y_score, n_boot=1000, seed=42):
-    return bootstrap_metric(y_true, y_score, average_precision_score, n_boot, seed)
+def pr_auc_with_ci(y_true, y_score, n_boot=1000, seed=42, groups=None):
+    return bootstrap_metric(y_true, y_score, average_precision_score, n_boot,
+                            seed, groups=groups)
 
 
 # ----------------------------------------------------------------------
@@ -89,7 +121,7 @@ def youden_threshold(y_true, y_score) -> float:
 
 
 def threshold_at_specificity(y_true, y_score, target_specificity: float) -> float:
-    """Lowest threshold (most lenient) that achieves >= target specificity."""
+    """Threshold with the highest sensitivity among those achieving >= target specificity."""
     fpr, tpr, thr = roc_curve(y_true, y_score)
     spec = 1 - fpr
     # Find thresholds where spec >= target; pick the one with highest sensitivity
@@ -159,10 +191,11 @@ def continuous_metrics(
     y_score: np.ndarray,
     n_boot: int = 1000,
     seed: int = 42,
+    groups: Optional[np.ndarray] = None,
 ) -> Dict[str, float]:
     """ROC-AUC, PR-AUC (with bootstrap CIs), and Brier score."""
-    auc_p, auc_lo, auc_hi = auc_with_ci(y_true, y_score, n_boot, seed)
-    pr_p,  pr_lo,  pr_hi  = pr_auc_with_ci(y_true, y_score, n_boot, seed)
+    auc_p, auc_lo, auc_hi = auc_with_ci(y_true, y_score, n_boot, seed, groups)
+    pr_p,  pr_lo,  pr_hi  = pr_auc_with_ci(y_true, y_score, n_boot, seed, groups)
 
     # Brier score requires probabilities in [0,1]. NMDetective-B's escape score
     # (1 − raw) IS in [0, 1] because raw is in [0, 0.65]. So Brier is defined,
@@ -193,11 +226,17 @@ def within_bin_auc(
     score_col: str,
     label_col: str,
     min_per_class: int = 10,
+    group_col: Optional[str] = None,
+    n_boot: int = 1000,
+    seed: int = 42,
 ) -> pd.DataFrame:
     """
     Compute ROC-AUC and PR-AUC of `score_col` against `label_col` within each
     level of `bin_col`. Skips bins with fewer than min_per_class of either
     class — AUC is undefined or noisy with few examples.
+
+    If group_col is given (e.g. "GENE_ID"), bootstrap CIs resample whole genes
+    within each bin.
     """
     rows = []
     for bin_val, sub in df.groupby(bin_col, dropna=False):
@@ -217,11 +256,14 @@ def within_bin_auc(
                 "skipped_reason": f"need >={min_per_class} per class",
             })
         else:
+            g = sub[group_col].values if group_col else None
             auc_p, auc_lo, auc_hi = auc_with_ci(
-                sub[label_col].values, sub[score_col].values
+                sub[label_col].values, sub[score_col].values,
+                n_boot=n_boot, seed=seed, groups=g,
             )
             pr_p, pr_lo, pr_hi = pr_auc_with_ci(
-                sub[label_col].values, sub[score_col].values
+                sub[label_col].values, sub[score_col].values,
+                n_boot=n_boot, seed=seed, groups=g,
             )
             rec.update({
                 "roc_auc": auc_p, "roc_auc_lo": auc_lo, "roc_auc_hi": auc_hi,
@@ -245,22 +287,29 @@ MODEL_COLORS = {
 
 
 def plot_roc_overlay(
-    results: Dict[str, dict],   # name -> {y_true, y_score, auc_str}
+    results: Dict[str, dict],   # name -> {y_true, y_score, legend}
     title: str = "",
     figsize=(7, 7),
     save_path: Optional[Path] = None,
 ):
-    """Overlay ROC curves. NMDetective-B will naturally appear as a staircase."""
+    """
+    Overlay ROC curves.
+
+    NMDetective-B has only 5 distinct score values, so its ROC has only a few
+    operating points. It is drawn with straight segments (matching how the
+    tie-aware trapezoidal AUC is computed) plus markers at the actual points.
+    """
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=figsize, dpi=150)
     for name, d in results.items():
         fpr, tpr, _ = roc_curve(d["y_true"], d["y_score"])
         color = MODEL_COLORS.get(name, "#444")
-        # drawstyle='steps-post' makes the staircase explicit
-        drawstyle = "steps-post" if name == "NMDetective-B" else "default"
-        ax.plot(fpr, tpr, label=d["legend"], color=color, linewidth=2.2,
-                drawstyle=drawstyle)
+        if name == "NMDetective-B":
+            ax.plot(fpr, tpr, label=d["legend"], color=color, linewidth=2.2,
+                    marker="o", markersize=6)
+        else:
+            ax.plot(fpr, tpr, label=d["legend"], color=color, linewidth=2.2)
     ax.plot([0, 1], [0, 1], color="gray", linestyle="--", linewidth=1, alpha=0.6)
     ax.set_xlabel("False positive rate (1 − specificity)", fontsize=12)
     ax.set_ylabel("True positive rate (sensitivity)", fontsize=12)
@@ -277,7 +326,6 @@ def plot_roc_overlay(
         fig.savefig(save_path.with_suffix(".pdf"), bbox_inches="tight")
     return fig, ax
 
-
 def plot_pr_overlay(
     results: Dict[str, dict],
     title: str = "",
@@ -290,9 +338,16 @@ def plot_pr_overlay(
     for name, d in results.items():
         prec, rec, _ = precision_recall_curve(d["y_true"], d["y_score"])
         color = MODEL_COLORS.get(name, "#444")
-        drawstyle = "steps-post" if name == "NMDetective-B" else "default"
-        ax.plot(rec, prec, label=d["legend"], color=color, linewidth=2.2,
-                drawstyle=drawstyle)
+        if name == "NMDetective-B":
+            # Step interpolation matches how average precision is defined
+            ax.plot(rec, prec, label=d["legend"], color=color, linewidth=2.2,
+                    drawstyle="steps-post")
+        else:
+            # Drop the recall=0 points so a false positive at the top of the
+            # ranking doesn't draw a vertical line down the y-axis
+            keep = rec > 0
+            ax.plot(rec[keep], prec[keep], label=d["legend"], color=color,
+                    linewidth=2.2)
     # Baseline = prevalence of positive class
     if results:
         any_y = next(iter(results.values()))["y_true"]
@@ -313,7 +368,6 @@ def plot_pr_overlay(
         fig.savefig(save_path, dpi=300, bbox_inches="tight")
         fig.savefig(save_path.with_suffix(".pdf"), bbox_inches="tight")
     return fig, ax
-
 
 def plot_within_bin_strip(
     df: pd.DataFrame,
