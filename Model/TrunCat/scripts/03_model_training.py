@@ -2,13 +2,21 @@
 """
 03_model_training.py
 ====================
-Trains the CatBoost NMD escape prediction model using 5-fold stratified CV,
-generates SHAP-based feature importances, and saves all outputs.
+Trains the CatBoost NMD escape prediction model using 5-fold gene-grouped
+cross-validation, generates SHAP-based feature importances, and saves all
+outputs.
+
+CV-protocol correction (Sept 2026): folds are now grouped by gene
+(StratifiedGroupKFold on `GENE_ID`, from config['data']['gene_ids']) instead
+of plain StratifiedKFold, and early stopping against the CV fold being
+scored has been removed — CATBOOST_PARAMS must specify a fixed `iterations`
+count (as validated separately). `key` (composite variant ID) is excluded
+from the feature matrix but retained for output joins.
 
 Steps:
   1. Load cleaned data (from script 02)
-  2. Identify categorical features
-  3. 5-fold stratified cross-validation
+  2. Identify categorical features; load gene groups
+  3. 5-fold gene-grouped cross-validation (fixed iterations, no early stopping)
   4. Feature importance (CV-averaged, native + SHAP)
   5. Train final model on all data
   6. Save models and results
@@ -36,7 +44,7 @@ import sys
 warnings.filterwarnings('ignore')
 
 from catboost import CatBoostClassifier, Pool
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedGroupKFold  # --- CV-protocol fix: was StratifiedKFold
 from sklearn.metrics import (
     roc_auc_score,
     roc_curve,
@@ -93,11 +101,19 @@ def setup(config):
     print("=" * 80)
 
     PATH_INPUT = config['data']['cleaned']
+    GENE_IDS_PATH = config['data']['gene_ids']  # --- CV-protocol fix: key + GENE_ID, from script 02
     TARGET     = config['model']['target']
     RANDOM_SEED = config['model']['random_seed']
     N_FOLDS    = config['model']['n_folds']
     CATBOOST_PARAMS = config['model']['catboost'].copy()
     CATEGORICAL_FEATURES = config['features']['categorical']
+
+    # --- CV-protocol fix: no early stopping anywhere in this script, so the
+    # iteration count must be fixed explicitly rather than tuned via eval_set.
+    assert 'iterations' in CATBOOST_PARAMS, (
+        "config['model']['catboost'] must specify a fixed `iterations` value — "
+        "early stopping against the CV fold being scored is no longer used."
+    )
 
     MODELS_DIR    = Path(config['output']['models_dir'])
     CV_MODELS_DIR = Path(config['output']['cv_models_dir'])
@@ -105,6 +121,7 @@ def setup(config):
     FIGURES_DIR   = Path(config['output']['figures_dir'])
 
     print(f"\nInput data: {PATH_INPUT}")
+    print(f"Gene IDs:   {GENE_IDS_PATH}")
     print(f"Target: {TARGET}")
     print(f"Random seed: {RANDOM_SEED}")
     print(f"CV folds: {N_FOLDS}")
@@ -122,7 +139,7 @@ def setup(config):
         directory.mkdir(parents=True, exist_ok=True)
     print("\n✓ All directories created")
 
-    return (PATH_INPUT, TARGET, RANDOM_SEED, N_FOLDS, CATBOOST_PARAMS,
+    return (PATH_INPUT, GENE_IDS_PATH, TARGET, RANDOM_SEED, N_FOLDS, CATBOOST_PARAMS,
             CATEGORICAL_FEATURES, MODELS_DIR, CV_MODELS_DIR, RESULTS_DIR, FIGURES_DIR)
 
 
@@ -130,7 +147,7 @@ def setup(config):
 # LOAD DATA
 # ==============================================================================
 
-def load_data(PATH_INPUT, TARGET, CATEGORICAL_FEATURES):
+def load_data(PATH_INPUT, GENE_IDS_PATH, TARGET, CATEGORICAL_FEATURES):
     print("\n" + "=" * 80)
     print("LOADING DATA")
     print("=" * 80)
@@ -138,12 +155,25 @@ def load_data(PATH_INPUT, TARGET, CATEGORICAL_FEATURES):
     df = pd.read_csv(PATH_INPUT)
     print(f"\n✓ Loaded: {df.shape}")
 
+    assert 'key' in df.columns, (
+        f"{PATH_INPUT} has no `key` column — this looks like a pre-fix "
+        "TOPMed_cleaned.csv (script 02 change missing?)."
+    )
+    keys = df['key'].to_numpy()
+
     y = df[TARGET].astype(int)
-    X = df.drop(columns=[TARGET])
+    # --- CV-protocol fix: `key` is an identifier, not a feature — exclude it.
+    X = df.drop(columns=[TARGET, 'key'])
+
+    # --- CV-protocol fix: gene groups for StratifiedGroupKFold.
+    gene_ids = pd.read_csv(GENE_IDS_PATH)[['key', 'GENE_ID']]
+    groups = df[['key']].merge(gene_ids, on='key', how='left')['GENE_ID'].to_numpy()
+    assert pd.notna(groups).all(), "some variants have no GENE_ID for grouping"
 
     print(f"\nDataset Info:")
     print(f"  Samples: {len(y)}")
     print(f"  Features: {X.shape[1]}")
+    print(f"  Unique genes (grouping): {len(set(groups))}")
     print(f"  Escapees: {y.sum()} ({y.mean()*100:.1f}%)")
     print(f"  NMD: {(~y.astype(bool)).sum()} ({(~y.astype(bool)).sum()/len(y)*100:.1f}%)")
 
@@ -165,19 +195,20 @@ def load_data(PATH_INPUT, TARGET, CATEGORICAL_FEATURES):
     for cat in sorted(cat_features):
         print(f"  - {cat}")
 
-    return X, y, cat_features, cat_indices
+    return X, y, cat_features, cat_indices, groups, keys
 
 
 # ==============================================================================
 # CROSS-VALIDATION
 # ==============================================================================
 
-def run_cross_validation(X, y, cat_indices, N_FOLDS, RANDOM_SEED, CATBOOST_PARAMS, CV_MODELS_DIR):
+def run_cross_validation(X, y, groups, cat_indices, N_FOLDS, RANDOM_SEED, CATBOOST_PARAMS, CV_MODELS_DIR):
     print("\n" + "=" * 80)
-    print(f"{N_FOLDS}-FOLD CROSS-VALIDATION")
+    print(f"{N_FOLDS}-FOLD GENE-GROUPED CROSS-VALIDATION")
     print("=" * 80)
 
-    skf = StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_SEED)
+    # --- CV-protocol fix: gene-grouped folds instead of plain StratifiedKFold.
+    skf = StratifiedGroupKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_SEED)
     cv_preds = np.zeros(len(y))
     cv_models = []
     fold_aucs = []
@@ -188,7 +219,9 @@ def run_cross_validation(X, y, cat_indices, N_FOLDS, RANDOM_SEED, CATBOOST_PARAM
 
     print(f"\nTraining {N_FOLDS} models...\n")
 
-    for fold, (train_idx, val_idx) in enumerate(tqdm(skf.split(X, y), total=N_FOLDS, desc="CV Folds")):
+    for fold, (train_idx, val_idx) in enumerate(
+        tqdm(skf.split(X, y, groups=groups), total=N_FOLDS, desc="CV Folds")
+    ):
         X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
         y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
 
@@ -200,7 +233,11 @@ def run_cross_validation(X, y, cat_indices, N_FOLDS, RANDOM_SEED, CATBOOST_PARAM
             cat_features=cat_indices,
             **CATBOOST_PARAMS
         )
-        model.fit(train_pool, eval_set=val_pool, verbose=False)
+        # --- CV-protocol fix: no eval_set / early stopping. This was the
+        # leakage bug — the same fold being scored was also used to pick the
+        # best iteration. CATBOOST_PARAMS['iterations'] is now fixed (see
+        # setup()'s assertion) instead of tuned per fold.
+        model.fit(train_pool, verbose=False)
 
         val_preds = model.predict_proba(val_pool)[:, 1]
         cv_preds[val_idx] = val_preds
@@ -289,7 +326,7 @@ def train_final_model(X, y, cat_indices, RANDOM_SEED, CATBOOST_PARAMS):
 
 def save_models_and_results(
     final_model, cv_models, fold_aucs, best_fold_idx, best_fold_auc,
-    cv_preds, y, X, cat_features, N_FOLDS, cv_auc, mean_auc, std_auc,
+    cv_preds, y, keys, X, cat_features, N_FOLDS, cv_auc, mean_auc, std_auc,
     CATBOOST_PARAMS, config, MODELS_DIR, CV_MODELS_DIR, RESULTS_DIR
 ):
     print("\n" + "=" * 80)
@@ -327,6 +364,7 @@ def save_models_and_results(
     # CV predictions
     print("\n💾 Saving cross-validation predictions...")
     cv_pred_df = pd.DataFrame({
+        'key':             keys,  # --- CV-protocol fix: for downstream joins (benchmarking, SHAP export, ablation)
         'true_label':      y,
         'predicted_prob':  cv_preds,
         'predicted_class': (cv_preds > 0.5).astype(int)
@@ -398,7 +436,7 @@ def save_models_and_results(
 # ==============================================================================
 
 def generate_visualizations(
-    X, y, cv_preds, cv_models, cat_indices, importance_df,
+    X, y, groups, cv_preds, cv_models, cat_indices, importance_df,
     N_FOLDS, RANDOM_SEED, config, FIGURES_DIR
 ):
     print("=" * 80)
@@ -429,8 +467,18 @@ def generate_visualizations(
     print("=" * 80)
 
     print("\nReconstructing CV splits...")
-    skf = StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_SEED)
-    fold_test_indices = [va for tr, va in skf.split(X, y)]
+    # --- CV-protocol fix: must match run_cross_validation's split exactly —
+    # same splitter, same groups, same seed, same N_FOLDS, same X/y in memory,
+    # so this reproduces the identical partition deterministically.
+    skf = StratifiedGroupKFold(n_splits=N_FOLDS, shuffle=True, random_state=RANDOM_SEED)
+    fold_test_indices = [va for tr, va in skf.split(X, y, groups=groups)]
+
+    # Sanity check: reconstructed folds must be a proper partition of all rows
+    all_test_idx = np.concatenate(fold_test_indices)
+    assert len(all_test_idx) == len(y) and len(set(all_test_idx.tolist())) == len(y), (
+        "Reconstructed CV folds don't partition the data — group/seed mismatch "
+        "with run_cross_validation()?"
+    )
 
     print("Computing SHAP values across folds...")
     all_shap_values = []
@@ -846,14 +894,16 @@ def main():
     try:
         config = load_config(args.config)
 
-        (PATH_INPUT, TARGET, RANDOM_SEED, N_FOLDS, CATBOOST_PARAMS,
+        (PATH_INPUT, GENE_IDS_PATH, TARGET, RANDOM_SEED, N_FOLDS, CATBOOST_PARAMS,
          CATEGORICAL_FEATURES, MODELS_DIR, CV_MODELS_DIR, RESULTS_DIR, FIGURES_DIR) = setup(config)
 
-        X, y, cat_features, cat_indices = load_data(PATH_INPUT, TARGET, CATEGORICAL_FEATURES)
+        X, y, cat_features, cat_indices, groups, keys = load_data(
+            PATH_INPUT, GENE_IDS_PATH, TARGET, CATEGORICAL_FEATURES
+        )
 
         (cv_preds, cv_models, fold_aucs, feature_importances_folds,
          best_fold_idx, best_fold_auc, cv_auc, mean_auc, std_auc) = run_cross_validation(
-            X, y, cat_indices, N_FOLDS, RANDOM_SEED, CATBOOST_PARAMS, CV_MODELS_DIR
+            X, y, groups, cat_indices, N_FOLDS, RANDOM_SEED, CATBOOST_PARAMS, CV_MODELS_DIR
         )
 
         importance_df = compute_feature_importance(X, cat_features, feature_importances_folds, RESULTS_DIR)
@@ -862,12 +912,12 @@ def main():
 
         save_models_and_results(
             final_model, cv_models, fold_aucs, best_fold_idx, best_fold_auc,
-            cv_preds, y, X, cat_features, N_FOLDS, cv_auc, mean_auc, std_auc,
+            cv_preds, y, keys, X, cat_features, N_FOLDS, cv_auc, mean_auc, std_auc,
             CATBOOST_PARAMS, config, MODELS_DIR, CV_MODELS_DIR, RESULTS_DIR
         )
 
         generate_visualizations(
-            X, y, cv_preds, cv_models, cat_indices, importance_df,
+            X, y, groups, cv_preds, cv_models, cat_indices, importance_df,
             N_FOLDS, RANDOM_SEED, config, FIGURES_DIR
         )
 

@@ -2,4 +2,4 @@ hub truncat_predictions_hub
 shortLabel TrunCat NMD predictions
 longLabel TrunCat NMD-escape predictions (gnomAD, ClinVar, GREGoR)
 genomesFile genomes.txt
-email jacob.schmidt@uth.tmc.edu
+email your_email@example.com

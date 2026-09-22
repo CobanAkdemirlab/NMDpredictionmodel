@@ -3,8 +3,7 @@
 Applies the NMDetective-B decision tree (Lindeboom et al., Nat Genet
 2019, Fig. 1c) to our stop-gain variant tables using locally-computed
 features. This produces a head-to-head comparison against
-TrunCat / TrunKitten on the same TOPMed held-out set, intended for the
-manuscript supplement.
+TrunCat / TrunKitten on the same TOPMed out-of-fold predictions.
 
 ## Why reimplement instead of looking up figshare scores
 
@@ -49,7 +48,7 @@ the paper's published thresholds (Results section):
 ## Required features
 
 The script auto-detects column names from a candidate list, so it works
-on `TopMed_merged_v4.csv` directly. Required fields:
+on `TopMed_merged.csv` directly. Required fields:
 
 | NMDetective feature                     | Default column         |
 |-----------------------------------------|------------------------|

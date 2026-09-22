@@ -5,8 +5,8 @@ Reference FASTA is DNA (A/C/G/T). We build transcript-oriented sequences by:
   - strand: reverse-complementing each block and concatenating in descending
     genomic order so the result is 5'→3' in transcript orientation.
 
-AU / UC "content" is computed on the DNA alphabet (AU = A+T, UC = T+C);
-naming is kept as-trained. N bases are excluded.
+AU "content" is computed on the DNA alphabet (AU = A+T); naming is kept
+as-trained. N bases are excluded.
 """
 from __future__ import annotations
 from typing import List, Tuple, Optional
@@ -51,14 +51,6 @@ def _au_content(seq: str) -> float:
     return au / n
 
 
-def _uc_content(seq: str) -> float:
-    n = len(seq)
-    if n == 0:
-        return float("nan")
-    uc = sum(1 for b in seq if b == "T" or b == "C")
-    return uc / n
-
-
 def cds_sequence(fasta: Fasta, tx: TranscriptRecord) -> str:
     """Full CDS string INCLUDING the stop codon, transcript-oriented.
 
@@ -73,42 +65,27 @@ def cds_sequence(fasta: Fasta, tx: TranscriptRecord) -> str:
     return fetch_blocks(fasta, tx.chrom, tx.strand, blocks)
 
 
-def compute_cds_composition(
-    fasta: Fasta, tx: TranscriptRecord, last_window: int = 200,
-) -> dict:
-    """Compute all three CDS-level composition features.
+def compute_cds_composition(fasta: Fasta, tx: TranscriptRecord) -> dict:
+    """Compute the CDS-level composition feature kept in TrunKitten's 8-feature set.
 
     Returns dict with:
-        cdsseqs_AU_content        — AU content of full CDS (always computed)
-        cdsseqs_UC_content        — UC content of full CDS (always computed)
-        cdsseq_AUcontentlast200   — AU content of last `last_window` nt of CDS,
-                                    or NaN if CDS shorter than window
-        cds_length                — for QC
-        cds_length_short_flag     — True if CDS < last_window
+        cdsseqs_AU_content — AU content of the full CDS
+        cds_length         — for QC only
 
-    Matches Iman's R:
-        if (length(a)<200){ return(NA) }
-    so the last-window feature is NaN when CDS < window. Consumer applies
-    training zero-fill (Notebook 02 zero-filled these 5 rows).
+    `cdsseqs_UC_content` and `cdsseq_AUcontentlast200` were dropped from the
+    TrunKitten feature set (Sept 2026 CV-protocol correction; see
+    trunkitten_features.json) and are no longer computed here. If either is
+    ever needed again (e.g. for TrunCat, which still uses all three), restore
+    `_uc_content` and the last-200nt slice from git history.
     """
     cds = cds_sequence(fasta, tx)
     L = len(cds)
     if L == 0:
         return {
-            "cdsseqs_AU_content":      float("nan"),
-            "cdsseqs_UC_content":      float("nan"),
-            "cdsseq_AUcontentlast200": float("nan"),
+            "cdsseqs_AU_content": float("nan"),
             "cds_length": 0,
-            "cds_length_short_flag": True,
         }
-
-    short_flag = L < last_window
-    last200_au = _au_content(cds[-last_window:]) if not short_flag else float("nan")
-
     return {
-        "cdsseqs_AU_content":      _au_content(cds),
-        "cdsseqs_UC_content":      _uc_content(cds),
-        "cdsseq_AUcontentlast200": last200_au,
+        "cdsseqs_AU_content": _au_content(cds),
         "cds_length": L,
-        "cds_length_short_flag": short_flag,
     }

@@ -1,6 +1,6 @@
 """TrunKitten PTC annotation pipeline (package name: `minicat`).
 
-Produces the 10 features required by TrunKitten — the reduced top-10 feature
+Produces the 8 features required by TrunKitten — the reduced top-8 feature
 NMD-prediction model derived from TrunCat (TRUNcation-aware Classifier using
 Annotated Transcripts) — for externally-called stop-gain variants.
 
@@ -22,7 +22,5 @@ REQUIRED_FEATURES = [
     "mut.exon",
     "phastcons_new3utr_first200_median",
     "phylop_ptc_to_ejc_median",
-    "AmountExonsAfter",
-    "cdsseq_AUcontentlast200",
-    "cdsseqs_UC_content",
+    "AmountExonsAfter"
 ]
