@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-predict.py — spooky_model v4.1 inference on new variant cohorts.
+predict.py — Truncat inference on new variant cohorts.
 
 Takes a variant CSV that already has the baseline enhanced features plus the
 six v4 annotation sources (codon optimality, readthrough, EJC occupancy,

@@ -1,15 +1,15 @@
 """Validate the TrunKitten annotation pipeline against the TrunCat training features.
 
-Loads the first N rows of TOPMed_merged_v4.csv (or any cleaned/merged CSV),
+Loads the first N rows of TOPMed_merged.csv (or any cleaned/merged CSV),
 runs the TrunKitten annotation pipeline on those variants, and compares the
-10 features column-by-column against the values produced by the TrunCat
+8 features column-by-column against the values produced by the TrunCat
 training-time feature generation.
 
 Usage:
     python scripts/validate_against_training.py \
-        --merged    /path/to/TOPMed_merged_v4.csv \
+        --merged    /path/to/TOPMed_merged.csv \
         --config    config/config.yaml \
-        --n         10 \
+        --n         8 \
         --out       outputs/validation_report.tsv
 
 Requires the same inputs as a normal TrunKitten run (GTF, FASTA, BigWigs,
@@ -34,7 +34,7 @@ from minicat.features import FeatureAnnotator
 
 
 # Column-name map: minicat output → training table.
-# All 10 feature names match training except we have to deal with txnames
+# All 8 feature names match training except we have to deal with txnames
 # being a comma-separated list in the merged file.
 MINICAT_TO_TRAINING = {
     "last.EJC": "last.EJC",
@@ -45,8 +45,6 @@ MINICAT_TO_TRAINING = {
     "phastcons_new3utr_first200_median": "phastcons_new3utr_first200_median",
     "phylop_ptc_to_ejc_median": "phylop_ptc_to_ejc_median",
     "AmountExonsAfter": "AmountExonsAfter",
-    "cdsseq_AUcontentlast200": "cdsseq_AUcontentlast200",
-    "cdsseqs_UC_content": "cdsseqs_UC_content",
 }
 
 CATEGORICAL = {"last.EJC"}
@@ -122,7 +120,7 @@ def main(argv=None) -> int:
         description="Validate the TrunKitten annotation pipeline against "
                     "the TrunCat training feature table."
     )
-    ap.add_argument("--merged", required=True, help="TOPMed_merged_v4.csv or equivalent")
+    ap.add_argument("--merged", required=True, help="TOPMed_merged.csv or equivalent")
     ap.add_argument("--config", required=True, help="TrunKitten config YAML")
     ap.add_argument("--n", type=int, default=10, help="number of variants to validate")
     ap.add_argument("--out",    default="outputs/validation_report.tsv")
@@ -184,7 +182,6 @@ def main(argv=None) -> int:
         tx_index=tx_index, fasta=fasta,
         phastcons=phastcons, phylop=phylop, halflife=hl,
         strip_versions=cfg.strip_versions,
-        cds_last_window=cfg.cds_last_window,
         new3utr_window=cfg.new3utr_window,
     )
 

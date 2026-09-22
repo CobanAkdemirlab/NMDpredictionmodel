@@ -1,38 +1,38 @@
 {
   "rule_50nt_feature": "last.EJC",
   "ablation_top_n": 30,
-  "baseline_oof_auc": 0.7925137593726843,
-  "ablated_oof_auc": 0.7802891023718799,
-  "delta_auc": -0.01222465700080444,
+  "baseline_oof_auc": 0.7799327506618918,
+  "ablated_oof_auc": 0.772398736214093,
+  "delta_auc": -0.007534014447798776,
   "top_absorbing_features": [
     {
-      "feature": "phastcons_new3utr_first200_median",
+      "feature": "phylop_new3utr_first200_median",
       "rank_before": 26,
-      "rank_after": 7,
-      "rank_change": 19
+      "rank_after": 11,
+      "rank_change": 15
     },
     {
       "feature": "AmountExonsAfter",
-      "rank_before": 8,
+      "rank_before": 14,
       "rank_after": 1,
-      "rank_change": 7
+      "rank_change": 13
     },
     {
-      "feature": "log2_CDS",
-      "rank_before": 17,
-      "rank_after": 11,
-      "rank_change": 6
-    },
-    {
-      "feature": "isoform_count",
-      "rank_before": 21,
-      "rank_after": 15,
+      "feature": "length.mutated.exon",
+      "rank_before": 28,
+      "rank_after": 22,
       "rank_change": 6
     },
     {
       "feature": "fiveUTR_AUcontentfirst100",
-      "rank_before": 18,
-      "rank_after": 13,
+      "rank_before": 31,
+      "rank_after": 25,
+      "rank_change": 6
+    },
+    {
+      "feature": "fiveUTR_AU_content",
+      "rank_before": 24,
+      "rank_after": 19,
       "rank_change": 5
     }
   ]
