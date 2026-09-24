@@ -1,35 +1,87 @@
 ############################################################
-# LMNA SGE experimental validation of TrunKitten
+# 03_LMNA_SGE_TrunKitten_validation.R
+#
+# Purpose:
+#   Compare TrunKitten predictions with experimentally
+#   measured NMD efficiency from the Cortazar et al.
+#   LMNA saturation genome editing dataset.
+#
+# Primary validation:
+#   Spearman correlation between TrunKitten-predicted
+#   NMD probability and normalized experimental NMD.
 ############################################################
 
-library(dplyr)
-library(ggplot2)
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(ggplot2)
+})
 
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) != 5) {
+  stop(
+    paste0(
+      "Usage:\n",
+      "Rscript 03_LMNA_SGE_TrunKitten_validation.R ",
+      "<PTC_FILE> <SNV_FILE> <LMNA_RDS> ",
+      "<PREDICTIONS_TSV> <OUTPUT_DIR>"
+    )
+  )
+}
+
+PTC_FILE <- args[1]
+SNV_FILE <- args[2]
+LMNA_FILE <- args[3]
+PREDICTION_FILE <- args[4]
+OUTPUT_DIR <- args[5]
+
+dir.create(
+  OUTPUT_DIR,
+  recursive = TRUE,
+  showWarnings = FALSE
+)
+
+
+PTC_FILE <- args[1]
+SNV_FILE <- args[2]
+LMNA_FILE <- args[3]
+PREDICTION_FILE <- args[4]
+OUTPUT_DIR <- args[5]
+
+dir.create(
+  OUTPUT_DIR,
+  recursive = TRUE,
+  showWarnings = FALSE
+)
 
 ############################################################
 # 1. READ CORTAZAR PTC AND SNV DATA
 ############################################################
 
-PTC <-
-  read.table(
-    "/Users/iegab/Downloads/NMD_efficiency_values_PTC.txt",
-    header = TRUE
-  )
+PTC <- read.table(
+  PTC_FILE,
+  header = TRUE
+)
 
-
-SNV <-
-  read.table(
-    "/Users/iegab/Downloads/NMD_efficiency_values_SNV.txt",
-    header = FALSE
-  )
-
-
+SNV <- read.table(
+  SNV_FILE,
+  header = FALSE
+)
 names(SNV) <-
   c(
     "codon",
     "mutation",
     "NMD"
   )
+
+lmna_snv_final <- readRDS(
+  LMNA_FILE
+)
+
+pred <- read.delim(
+  PREDICTION_FILE
+)
+
 
 
 ############################################################
@@ -234,7 +286,7 @@ summary(
 
 lmna_snv_final <-
   readRDS(
-    "/Users/iegab/Downloads/lmna_snv_final.rds"
+    "/path/lmna_snv_final.rds"
   )
 
 
@@ -300,7 +352,7 @@ lmna_validation %>%
 
 pred <-
   read.delim(
-    "/Users/iegab/Downloads/LMNA_TrunKitten_predictions.tsv"
+    "/path/LMNA_TrunKitten_predictions.tsv"
   )
 
 
@@ -422,7 +474,9 @@ ggplot(
 
 write.csv(
   lmna_validation_final,
-  "/Users/iegab/Downloads/LMNA_SGE_validation_final.csv",
+  file.path(
+    OUTPUT_DIR,
+    "LMNA_SGE_validation_final.csv"
+  ),
   row.names = FALSE
 )
-
