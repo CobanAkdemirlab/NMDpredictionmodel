@@ -1,31 +1,70 @@
 ############################################################
-# LMNA SGE -> TrunKitten feature preparation
+# 01_LMNA_prepare_TrunKitten_features.R
 #
 # Purpose:
-#   Convert Cortazar et al. codon-level LMNA PTC data into
-#   SNV-compatible stop-gain variants and reconstruct
-#   TrunKitten transcript features.
+#   Prepare SNV-compatible stop-gain variants from the
+#   Cortazar et al. LMNA saturation genome editing dataset
+#   and reconstruct the non-conservation TrunKitten features.
+#
+# Inputs:
+#   1. Cortazar et al. LMNA PTC measurements
+#   2. GENCODE v26 GTF
+#   3. GRCh38 reference FASTA
+#   4. mRNA half-life PC1 table
+#
+# Outputs:
+#   LMNA_Cortazar_TrunKitten_variants.csv
+#   lmna_snv_before_conservation.rds
 ############################################################
 
-library(dplyr)
-library(stringr)
-library(rtracklayer)
-library(GenomicRanges)
-library(Rsamtools)
-library(Biostrings)
-library(readxl)
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(stringr)
+  library(rtracklayer)
+  library(GenomicRanges)
+  library(Rsamtools)
+  library(Biostrings)
+  library(readxl)
+})
+
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) != 5) {
+  stop(
+    paste0(
+      "Usage:\n",
+      "Rscript 01_LMNA_prepare_TrunKitten_features.R ",
+      "<PTC_FILE> <GENCODE_V26_GTF> <GRCh38_FASTA> ",
+      "<HALF_LIFE_PC1_XLSX> <OUTPUT_DIR>"
+    )
+  )
+}
+
+PTC_FILE      <- args[1]
+GTF_FILE      <- args[2]
+GENOME_FILE   <- args[3]
+HALF_LIFE_FILE <- args[4]
+OUTPUT_DIR    <- args[5]
+
+dir.create(
+  OUTPUT_DIR,
+  recursive = TRUE,
+  showWarnings = FALSE
+)
+
+LMNA_TX <- "ENST00000368300.8"
 
 ############################################################
 # 1. INPUT FILES
 ############################################################
 
-PTC_FILE <- "/Users/iegab/Downloads/NMD_efficiency_values_PTC.txt"
+PTC_FILE <- "/path/NMD_efficiency_values_PTC.txt"
 
-GTF_FILE <- "/Users/iegab/Downloads/gencode.v26.primary_assembly.annotation.gtf"
+GTF_FILE <- "/path/gencode.v26.primary_assembly.annotation.gtf"
 
-GENOME_FILE <- "/Users/iegab/Downloads/GRCh38.primary_assembly.genome.fa"
+GENOME_FILE <- "/path/GRCh38.primary_assembly.genome.fa"
 
-HALF_LIFE_FILE <- "/Users/iegab/Downloads/half_life_pc1 (1).xlsx"
+HALF_LIFE_FILE <- "/path/half_life_pc1.xlsx"
 
 # Transcript used for LMNA
 LMNA_TX <- "ENST00000368300.8"
@@ -647,16 +686,21 @@ LMNA_Cortazar_TrunKitten_variants <-
 
 write.csv(
   LMNA_Cortazar_TrunKitten_variants,
-  "/Users/iegab/Downloads/LMNA_Cortazar_TrunKitten_variants.csv",
+  file.path(
+    OUTPUT_DIR,
+    "LMNA_Cortazar_TrunKitten_variants.csv"
+  ),
   row.names = FALSE
 )
 
-
-############################################################
-# 23. SAVE INTERMEDIATE LMNA DATA
-############################################################
-
 saveRDS(
   lmna_snv,
-  "/Users/iegab/Downloads/lmna_snv_before_conservation.rds"
+  file.path(
+    OUTPUT_DIR,
+    "lmna_snv_before_conservation.rds"
+  )
 )
+
+close(genome)
+
+message("LMNA TrunKitten feature preparation complete.")
