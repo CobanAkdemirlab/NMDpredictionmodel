@@ -1,4 +1,62 @@
 #!/usr/bin/env python3
+"""
+08a_make_optimal_codons_from_trna.py
+
+Purpose
+-------
+Generate the optimal-codon reference used for codon-optimality feature
+calculation.
+
+Optimal codons were defined following the approach used by
+Lindeboom et al. (2016): for each amino acid, the codon(s) corresponding
+to the highest number of human tRNA genes were classified as optimal.
+
+Reference resource
+------------------
+Human tRNA annotation:
+    UCSC Table Browser
+    Genome assembly: hg38
+    Track: GtRNAdb-based tRNA genes
+
+Repository input:
+    reference/codon_optimality/hg38_tRNAs.tsv
+
+The input table must contain:
+    aa  - amino acid
+    ac  - anticodon
+
+Method
+------
+1. Reverse-complement each tRNA anticodon to obtain the corresponding
+   DNA codon.
+2. Count tRNA gene copies for each amino-acid/codon combination.
+3. For each amino acid, retain the codon(s) with the maximum tRNA gene
+   copy number.
+
+The manuscript analysis used:
+    --mode per_aa_max
+
+Output
+------
+Plain-text file containing one optimal codon per line:
+
+    reference/codon_optimality/optimal_codons.txt
+
+This output is subsequently used by:
+
+    08b_codon_optimality_features.py
+
+References
+----------
+Lindeboom RGH, Supek F, Lehner B.
+The rules and impact of nonsense-mediated mRNA decay in human cancers.
+Nature Genetics. 2016.
+
+Supek F, Minana B, Valcarcel J, Gabaldon T, Lehner B.
+Synonymous mutations frequently act as driver mutations in human cancers.
+Cell. 2014.
+"""
+
 import argparse
 import pandas as pd
 
