@@ -59,6 +59,7 @@ Cell. 2014.
 
 import argparse
 import pandas as pd
+from pathlib import Path
 
 def revcomp(seq: str) -> str:
     comp = str.maketrans("ACGTNacgtn", "TGCANtgcan")
