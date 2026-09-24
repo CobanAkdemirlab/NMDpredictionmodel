@@ -1,4 +1,42 @@
 ############################################################
+# 02_LMNA_add_conservation_and_predict.R
+#
+# Purpose:
+#   Merge conservation features with the prepared LMNA
+#   variants and construct the exact 10-feature input
+#   required by TrunKitten.
+#
+# Inputs:
+#   1. lmna_snv_before_conservation.rds
+#   2. variants_with_conservation_medians.csv
+#
+# Output:
+#   LMNA_TrunKitten_10features_with_id.tsv
+############################################################
+suppressPackageStartupMessages({
+  library(dplyr)
+})
+
+args <- commandArgs(trailingOnly = TRUE)
+
+if (length(args) != 3) {
+  stop(
+    paste0(
+      "Usage:\n",
+      "Rscript 02_LMNA_add_conservation_and_predict.R ",
+      "<LMNA_RDS> <CONSERVATION_CSV> <OUTPUT_TSV>"
+    )
+  )
+}
+
+LMNA_FILE <- args[1]
+CONSERVATION_FILE <- args[2]
+OUTPUT_FILE <- args[3]
+
+lmna_snv <- readRDS(LMNA_FILE)
+conservation <- read.csv(CONSERVATION_FILE)
+
+############################################################
 # ADD CONSERVATION FEATURES
 ############################################################
 
@@ -7,13 +45,13 @@ library(dplyr)
 # Reload intermediate object if needed
 lmna_snv <-
   readRDS(
-    "/Users/iegab/Downloads/lmna_snv_before_conservation.rds"
+    "/path/lmna_snv_before_conservation.rds"
   )
 
 
 conservation <-
   read.csv(
-    "/Users/iegab/Downloads/variants_with_conservation_medians.csv"
+    "/path/variants_with_conservation_medians.csv"
   )
 
 
@@ -84,12 +122,16 @@ dim(trunkitten_input_with_id)
 
 write.table(
   trunkitten_input_with_id,
-  "/Users/iegab/Downloads/LMNA_TrunKitten_10features_with_id.tsv",
+  "LMNA_TrunKitten_10features_with_id.tsv",
   sep = "\t",
   row.names = FALSE,
   quote = FALSE
 )
 
+message(
+  "TrunKitten input written: ",
+  OUTPUT_FILE
+)
 
 #then on ssh
 cd /home/iegab/TrunKitten_LMNA
