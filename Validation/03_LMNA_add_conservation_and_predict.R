@@ -36,23 +36,6 @@ OUTPUT_FILE <- args[3]
 lmna_snv <- readRDS(LMNA_FILE)
 conservation <- read.csv(CONSERVATION_FILE)
 
-############################################################
-# ADD CONSERVATION FEATURES
-############################################################
-
-library(dplyr)
-
-# Reload intermediate object if needed
-lmna_snv <-
-  readRDS(
-    "/path/lmna_snv_before_conservation.rds"
-  )
-
-
-conservation <-
-  read.csv(
-    "/path/variants_with_conservation_medians.csv"
-  )
 
 
 lmna_snv_final <-
