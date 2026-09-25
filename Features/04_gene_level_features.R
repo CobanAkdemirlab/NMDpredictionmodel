@@ -14,9 +14,9 @@ library(readxl)
 
 CONFIG <- list(
 
-    # gnomAD v2.1.1 gene constraint metrics
+    # gnomAD v4.1 gene constraint metrics
     lof_metrics_file =
-        "/path/to/gnomad.v2.1.1.lof_metrics.by_gene.txt",
+        "/path/to/gnomad.v4.1.constraint_metrics.tsv",
 
     # GTEx v8 gene median TPM
     gtex_expression_file =
