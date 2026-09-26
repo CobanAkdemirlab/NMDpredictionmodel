@@ -50,9 +50,9 @@ variants <- readRDS(
 scores <- read.delim(
     CONFIG$score_file,
     stringsAsFactors = FALSE,
-    check.names = FALSE
+    check.names = FALSE,
+    na.strings = c(".", "NA", "")
 )
-
 
 # ------------------------------------------------------------------------------
 # 3. Construct standardized variant key
