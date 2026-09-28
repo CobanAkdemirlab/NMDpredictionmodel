@@ -73,19 +73,30 @@ lof_metrics <- read.table(
     stringsAsFactors = FALSE
 )
 
+# Retain one canonical transcript per gene
 lof_sub <- lof_metrics %>%
+    filter(
+        canonical == 'true'
+    ) %>%
     select(
         gene_id,
-        lof.pLI,
-        lof.oe_ci.upper
+        pLI = lof.pLI,
+        LOEUF = lof.oe_ci.upper
     )
 
+# QC: canonical gene IDs should be unique
+stopifnot(
+    anyDuplicated(lof_sub$gene_id) == 0
+)
+
+# Merge gene-level constraint metrics
 variants <- variants %>%
     left_join(
         lof_sub,
         by = c(
             "ensembl_gene_id" = "gene_id"
-        )
+        ),
+        relationship = "many-to-one"
     )
 
 
