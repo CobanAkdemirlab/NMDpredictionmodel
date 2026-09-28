@@ -892,7 +892,7 @@ threeutr_intron_table <- data.frame(
                 threeutr_gr
             ),
             "There is a 3UTR intron",
-            "NA"
+            NA_character_
         ),
 
     stringsAsFactors = FALSE
@@ -912,7 +912,7 @@ fiveutr_intron_table <- data.frame(
                 fiveutr_gr
             ),
             "There is a 5UTR intron",
-            "NA"
+            NA_character_
         ),
 
     stringsAsFactors = FALSE
