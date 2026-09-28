@@ -76,8 +76,8 @@ lof_metrics <- read.table(
 lof_sub <- lof_metrics %>%
     select(
         gene_id,
-        pLI,
-        oe_lof_upper
+        lof.pLI,
+        lof.oe_ci.upper
     )
 
 variants <- variants %>%
