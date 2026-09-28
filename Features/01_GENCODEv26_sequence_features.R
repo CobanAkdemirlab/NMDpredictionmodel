@@ -840,6 +840,19 @@ for (
         ]
 }
 
+# QC: legacy capitalized 5'UTR model feature names should not remain
+bad_fiveutr_names <- grep(
+    "^FiveUTR_",
+    names(fiveutr_features),
+    value = TRUE
+)
+
+if (length(bad_fiveutr_names) > 0) {
+    stop(
+        "Unexpected capitalized FiveUTR feature names remain: ",
+        paste(bad_fiveutr_names, collapse = ", ")
+    )
+}
 
 # ==============================================================================
 # UTR intron indicators
