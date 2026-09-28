@@ -29,27 +29,39 @@ CONFIG <- list(
     lof_metrics_file =
         "/path/to/gnomad.v4.1.constraint_metrics.tsv",
 
-    # GTEx v8 gene median TPM
+    # GTEx v8 median gene expression by tissue
     #
     # Source:
     # https://www.gtexportal.org/home/downloads/adult-gtex/bulk_tissue_expression
     #
     # Download:
-    # GTEx Analysis V8  -> RNA-Seq  -> 
-    # Median gene-level TPM by tissue. 
-    # Median expression was calculated from the file 
-    # GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct.gz.
+    # GTEx Analysis V8 -> RNA-Seq ->
+    # Median gene-level TPM by tissue
+    #
+    # File:
+    # GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.gz
+    #
+    # GTEx reports that these tissue-level median TPM values were calculated
+    # from GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct.gz.
     
     gtex_expression_file =
         "/path/to/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt",
 
     # Agarwal & Kelley (2022) supplementary human mRNA half-life data
+    #
     # Source:
-    # Agarwal V, Kelley DR. The genetic and biochemical determinants of mRNA degradation rates in mammals. 
-    # Genome Biol. 2022 Nov 23;23(1):245. doi: 10.1186/s13059-022-02811-x. PMID: 36419176; PMCID: PMC9684954.
+    # Agarwal V, Kelley DR. The genetic and biochemical determinants of
+    # mRNA degradation rates in mammals.
+    # Genome Biol. 2022;23:245.
+    # doi: 10.1186/s13059-022-02811-x
+    #
+    # File:
+    # 13059_2022_2811_MOESM3_ESM.xlsx
     half_life_file =
         "/path/to/13059_2022_2811_MOESM3_ESM.xlsx",
-
+    
+    # Transcript-to-gene mapping used to assign stable Ensembl gene IDs
+    # to the annotated variant transcripts.
     canonical_gene_map =
         "/path/to/canonical_transcript_gene_map.tsv"
 )
