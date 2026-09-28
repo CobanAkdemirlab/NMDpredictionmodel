@@ -50,7 +50,7 @@ library(GenomicRanges)
 # ------------------------------------------------------------------------------
 
 CONFIG <- list(
-
+# Source: https://www.gencodegenes.org/human/release_26.html
     gencode_gtf =
         "/path/to/gencode.v26.primary_assembly.annotation.gtf.gz",
 
