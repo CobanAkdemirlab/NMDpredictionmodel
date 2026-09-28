@@ -13,16 +13,40 @@ library(dplyr)
 library(readxl)
 
 CONFIG <- list(
-
     # gnomAD v4.1 gene constraint metrics
+    #
+    # Source:
+    # https://gnomad.broadinstitute.org/downloads
+    #
+    # Download:
+    # gnomAD v4.1 -> Constraint -> Constraint metrics
+    #
+    # File:
+    # gnomad.v4.1.constraint_metrics.tsv
+    #
+    # The full gnomAD file is not distributed with this repository.
+    # Download it from gnomAD and update the path below.
     lof_metrics_file =
         "/path/to/gnomad.v4.1.constraint_metrics.tsv",
 
     # GTEx v8 gene median TPM
+    #
+    # Source:
+    # https://www.gtexportal.org/home/downloads/adult-gtex/bulk_tissue_expression
+    #
+    # Download:
+    # GTEx Analysis V8  -> RNA-Seq  -> 
+    # Median gene-level TPM by tissue. 
+    # Median expression was calculated from the file 
+    # GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct.gz.
+    
     gtex_expression_file =
         "/path/to/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt",
 
     # Agarwal & Kelley (2022) supplementary human mRNA half-life data
+    # Source:
+    # Agarwal V, Kelley DR. The genetic and biochemical determinants of mRNA degradation rates in mammals. 
+    # Genome Biol. 2022 Nov 23;23(1):245. doi: 10.1186/s13059-022-02811-x. PMID: 36419176; PMCID: PMC9684954.
     half_life_file =
         "/path/to/13059_2022_2811_MOESM3_ESM.xlsx",
 
