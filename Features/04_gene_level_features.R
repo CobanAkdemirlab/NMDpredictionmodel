@@ -116,8 +116,8 @@ lof_sub <- lof_metrics %>%
     ) %>%
     select(
         gene_id,
-        pLI = lof.pLI,
-        LOEUF = lof.oe_ci.upper
+        pLI          = lof.pLI,
+        oe_lof_upper = lof.oe_ci.upper
     )
 
 # QC: canonical gene IDs should be unique
