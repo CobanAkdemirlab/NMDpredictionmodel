@@ -122,7 +122,7 @@ OUTPUT_CSV = (
     / "variants_with_motif_regions.csv"
 )
 
-BATCH_SIZE = 1000
+BATCH_SIZE = 1000 # add more
 
 REGIONS = [
     "ptc_to_ejc",
