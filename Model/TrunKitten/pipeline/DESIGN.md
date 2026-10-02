@@ -1,7 +1,8 @@
 # TrunKitten Annotation Pipeline — Design & Specification
 
-**TrunKitten** is the reduced top-8 feature NMD-prediction model derived
-from **TrunCat** (TRUNcation-aware Classifier using Annotated Transcripts).
+**TrunKitten** is the reduced 8-feature NMD-prediction model (features chosen by
+mean |SHAP| and kept only if present in all five leave-one-fold-out top-10
+rankings) derived from **TrunCat** (TRUNcation-aware Classifier using Annotated Transcripts).
 This pipeline annotates pre-called PTC / stop-gain variants with exactly
 the 8 features TrunKitten requires. All conventions are aligned with the
 TrunCat training-pipeline scripts (`conservation_score_extraction_v2.py`,
@@ -101,7 +102,13 @@ training distribution and create silent skew in `phastcons_new3utr_first200_medi
 - **UTR included**: yes — denominator is total exonic length.
 - **Output**: float in (0, 1].
 
-### 1.4 `AmountExonsAfter` — integer ≥ 0
+### 1.4 `AmountExonsAfter` — REMOVED from TrunKitten
+
+**Status: not part of the final TrunKitten feature set.** In the corrected
+analysis it appeared in 4 of 5 leave-one-fold-out top-10 rankings, so it did not
+meet the 5/5 stability rule. `minicat` no longer reports it; `amount_exons_after`
+remains in `transcript.py` (TrunCat convention, covered by the toy tests). The
+definition is kept for reference.
 
 - **Meaning**: number of **coding exons** strictly downstream (in transcript
   order) of the exon that contains the PTC.
@@ -142,19 +149,20 @@ sequence. AU/UC content is a *biological* (RNA) concept but equivalent to
 AT / TC on the DNA alphabet. We compute on the DNA alphabet and name the
 feature as-trained (AU, UC) — no character substitution needed:
 
-- `AU_content = (count(A) + count(T)) / total_non_N_bases`
-- `UC_content = (count(T) + count(C)) / total_non_N_bases`
+- `AU_content = (count(A) + count(T)) / total_bases`
+- `UC_content = (count(T) + count(C)) / total_bases`
 
 "Content" = fraction of single bases in the set, **not** dinucleotides.
-N bases are excluded from numerator and denominator.
+The denominator is the full sequence length, including any N bases, to match
+R `Biostrings::alphabetFrequency(baseOnly = TRUE, as.prob = TRUE)` used in training.
 
 ### 1.6 `cdsseq_AUcontentlast200` — REMOVED from TrunKitten
 
-**Status: dropped from the TrunKitten feature set** (Sept 2026 CV-protocol
-correction and feature reduction from 10 → 8; see `trunkitten_features.json`).
-Still computed for TrunCat, which retains all ~730 features. `minicat` no
-longer computes this feature. The definitional rationale below is kept for
-historical reference.
+**Status: not part of TrunKitten.** The feature was in the first submission's
+10-feature set. In the corrected pipeline it is removed during feature cleaning
+(notebook 02) as redundant with `cdsseq_AUcontentlast100` (r = 0.94), so it is
+not in TrunCat's final feature set either, and `minicat` does not compute it.
+The definitional rationale below is kept for historical reference.
 
 Note: singular `cdsseq` here vs plural `cdsseqs` above.
 
@@ -188,14 +196,12 @@ If CDS length < 200, the training pipeline zero-fills this (see
 `utr_zero_fill` in Notebook 02). We return the actual fraction and flag it;
 the inference user applies the same zero-fill rule before scoring.
 
-### 1.7 `cdsseqs_UC_content` — REMOVED from TrunKitten
+### 1.7 `cdsseqs_UC_content` — float in [0, 1]
 
-**Status: dropped from the TrunKitten feature set** (Sept 2026 CV-protocol
-correction and feature reduction from 10 → 8; see `trunkitten_features.json`).
-Still computed for TrunCat. `minicat` no longer computes this feature.
-
-Same as §1.5 but `count(T) + count(C)` / `total_non_N`. "UC" in the RNA
-alphabet = T+C on DNA. Computed on the full annotated CDS (§1.5 convention).
+Same as §1.5 but `(count(T) + count(C)) / total_bases` ("UC" in the RNA alphabet
+= T+C on DNA), computed on the full annotated CDS including the native stop
+codon (§1.5 convention). Depends only on the transcript, not on the variant.
+It is not missing for any transcript with a CDS.
 
 ### 1.8 `half_life_PC1` — float
 
@@ -242,25 +248,29 @@ alphabet = T+C on DNA. Computed on the full annotated CDS (§1.5 convention).
     vector by intersecting with BED entries and carrying the score field.
     We provide a `_extract_from_bed` fallback in `conservation.py`.
 
-### 1.10 `phylop_ptc_to_ejc_median` — float
+### 1.10 `MedianExpression_log2` — float
 
-- **Region** (genomic, within the PTC-containing exon, strand-aware):
-  - + strand: `[ptc+1 .. exon_end]` of the current exon.
-  - − strand: `[exon_start .. ptc-1]` of the current exon.
-  - This is the **within-exon** downstream stretch up to the nearest
-    exon-exon junction. Matches `conservation_score_extraction_v2.py`
-    exactly.
-- **"Downstream EJC" definition**: the nearest 3′ exon-exon junction in
-  transcript orientation, which is the current exon's 3′ boundary. The
-  region only covers up to that junction — not across it.
-- **Special cases**:
-  - `last.EJC == 'last.exon'` → no downstream EJC exists → region is
-    empty → `NaN` (training pipeline zero-fills).
-  - `last.EJC == 'penultimate.last50bp'` → region still exists (penultimate
-    exon has a downstream EJC at its 3′ end). The "last 50 bp" rule is
-    about NMD biology, not about whether the region exists.
-- **Missing / no-valid-interval**: `NaN`, plus `ptc_to_ejc_empty` flag.
-- **Implementation**: identical median-over-valid-values logic as §1.9.
+- **Source**: GTEx v8 median gene-level TPM by tissue
+  (`GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.gz`,
+  https://www.gtexportal.org/home/downloads/adult-gtex/bulk_tissue_expression).
+  Same file and logic as `Features/04_gene_level_features.R`.
+- **Definition**: for each gene, the **median across all tissue columns** of the
+  per-tissue median TPM (NaN ignored), then `log2(x + 1)`.
+- **Gene key**: GTEx v8 uses GENCODE v26 gene IDs, the same release as the GTF, so
+  the lookup is by version-stripped ENSG from the GTF (`gene_id` of the
+  `txnames` transcript). If the ENSG is absent, a gene-symbol fallback (GTEx
+  `Description` column) is tried, as for `half_life_PC1`; set
+  `expression_symbol_fallback: false` to use IDs only.
+- **Missing handling**: `NaN` plus `expression_missing=True`. `predict.py`
+  median-imputes it from `training_medians.json` (notebook 02 does the same).
+- **Caveat**: in the TOPMed data this feature correlates modestly with sequencing
+  read depth, which is worth keeping in mind for cohorts with a different depth
+  profile.
+
+### Note on `phastcons_new3utr_first200_median` (§1.9)
+
+This feature partly reflects last-exon status (it is associated with `last.EJC`),
+so it should not be read as an independent conservation signal.
 
 ---
 
@@ -288,8 +298,8 @@ minicat_pipeline/
 │   ├── annotation.gtf.gz
 │   ├── genome.fa(.fai)
 │   ├── phastcons.bw
-│   ├── phylop.bw
-│   └── half_life_pc1.xlsx
+│   ├── half_life_pc1.xlsx
+│   └── gtex_gene_median_tpm.gct.gz
 ├── minicat/                     # package
 │   ├── __init__.py
 │   ├── config.py                # yaml loader
@@ -316,9 +326,10 @@ minicat_pipeline/
 | `config.py`      | Load YAML, validate paths exist, return immutable config dataclass.            |
 | `gtf_index.py`   | Parse GTF once → `{transcript_id: TranscriptRecord}` with exons, CDS, gene_id. Normalises version suffixes.  |
 | `transcript.py`  | `genomic_to_transcript_pos`, `locate_exon`, `rank_exons_5to3`, `coding_exons`. |
-| `sequence.py`    | Build spliced transcript string (strand-aware RC), extract CDS, compute AU/UC. |
-| `conservation.py`| Extract `new3utr_first200` and `ptc_to_ejc` intervals, query BigWig/BED, return median + QC length. |
+| `sequence.py`    | Build spliced transcript string (strand-aware RC), extract CDS, compute AU and UC content. |
+| `conservation.py`| Query phastCons BigWig/BED over the `new3utr_first200` region, return median + QC length. |
 | `halflife.py`    | Load Excel; map `txnames → ENSG → half_life_PC1`.                              |
+| `expression.py`  | Load GTEx median-TPM table; map ENSG → `MedianExpression_log2` (median across tissues, log2(x+1)). |
 | `features.py`    | Orchestrator: for each variant row, produce the 8-feature dict + QC fields.   |
 | `qc.py`          | Assembles missing-flag columns, boundary-ambiguous markers, length QC.         |
 | `cli.py`         | Argparse entry point; parallelises per-variant annotation; writes outputs.     |
@@ -331,10 +342,10 @@ minicat_pipeline/
   `variant_id, txnames, transcript_id_used, gene_id, strand, exon_count,
   coding_exon_count, ptc_transcript_pos, transcript_length, cds_length,
   downstream_new3utr_len, boundary_ambiguous, tx_not_in_gtf, version_mismatch,
-  cds_length_short_flag, new3utr_empty, ptc_to_ejc_empty, half_life_missing,
+  new3utr_empty, half_life_missing, expression_missing,
   any_conservation_missing`.
 - Final summary at exit: count of successfully annotated variants, missing
-  transcripts, missing half-life keys, empty regions.
+  transcripts, missing half-life / expression keys, empty regions.
 
 ---
 
@@ -343,7 +354,6 @@ minicat_pipeline/
 | Region | Transcript-oriented definition | Genomic realisation |
 |---|---|---|
 | new3utr_first200 | First 200 tx-bases strictly after the PTC position | Clip PTC-containing exon at (ptc±1, boundary); concat downstream exon blocks in transcript order; take_first_N=200. |
-| ptc_to_ejc | PTC+1 → nearest downstream exon-exon junction (within exon) | Single genomic interval within the PTC-containing exon: `[ptc+1, exon_end]` (+) or `[exon_start, ptc-1]` (−). |
 | Full CDS (for content) | start codon → base before stop codon | Concatenate CDS GTF intervals in transcript order; RC if − strand. |
 
 BigWig mechanics: all regions are converted to BED half-open `[start0, end0)`
@@ -355,7 +365,7 @@ intrinsically per-base).
 BED fallback: if the conservation file is a bedGraph-like BED with a `value`
 column, we build per-chromosome `pyranges` and do an interval intersection,
 expanding to per-base values using the entry's score. Median over valid bases.
-(For phyloP / phastCons, BigWig is strongly preferred — bedGraph is order-of-
+(For phastCons, BigWig is strongly preferred — bedGraph is order-of-
 magnitude slower for per-base median.)
 
 ---
@@ -426,9 +436,9 @@ hand-computed one (write out exon sequences manually).
 | Input `position` not inside any exon of `txnames`      | Exon-containing lookup returns empty            | Skip variant; emit NaN row; log. This is a data quality issue — PTC should be exonic.        |
 | PTC at exon boundary                                   | `position == exon_start` or `position == exon_end` | `boundary_ambiguous=True`; still assigned by inclusive rule.                              |
 | new3utr region empty (shouldn't happen if not last exon — but sanity check) | `take_first_N` returns empty list     | Set `new3utr_empty=True`; features → NaN.                                                    |
-| `ptc_to_ejc` empty (last.exon)                         | `last.EJC == 'last.exon'`                       | Expected; `ptc_to_ejc_empty=True`; feature → NaN.                                            |
 | All BigWig values NaN in region                        | `valid_bp == 0`                                 | Feature → NaN; `any_conservation_missing=True`.                                              |
 | Excel missing ENSG                                     | Merge miss                                      | `half_life_missing=True`; feature → NaN.                                                     |
+| Gene absent from the GTEx table (ID and symbol)        | Lookup miss                                     | `expression_missing=True`; feature → NaN; `predict.py` imputes the training median.          |
 | Chromosome naming mismatch (`chr1` vs `1`) between GTF and BigWig | Harmonisation step at BigWig open | Auto-detect by probing `bw.chroms()` and prefixing / stripping `chr`.                        |
 
 ### Final output schema
@@ -447,18 +457,20 @@ One row per input variant, column order:
    - `half_life_PC1` *(float64 or NaN)*
    - `cdsseqs_AU_content` *(float64)*
    - `mut.exon` *(int)*
+   - `cdsseqs_UC_content` *(float64)*
    - `phastcons_new3utr_first200_median` *(float64 or NaN)*
-   - `phylop_ptc_to_ejc_median` *(float64 or NaN)*
-   - `AmountExonsAfter` *(int)*
+   - `MedianExpression_log2` *(float64 or NaN)*
+
+   (This is the model's feature order, `trunkitten_features.json["features_in_order"]`.)
 8. **QC** *(all written to `qc_report.tsv`)*: `exon_count`, `coding_exon_count`,
    `ptc_transcript_pos`, `transcript_length`, `cds_length`, `downstream_new3utr_len`,
    `boundary_ambiguous`, `tx_not_in_gtf`, `version_mismatch`,
-   `new3utr_empty`, `ptc_to_ejc_empty`, `half_life_missing`, `any_conservation_missing`.
+   `new3utr_empty`, `half_life_missing`, `expression_missing`, `any_conservation_missing`.
    
-Example row (tab-separated, abbreviated):
+Example row (tab-separated, abbreviated; illustrative values):
 ```
-variant_id           txnames             transcript_id_used   gene   gene_id           strand  last.EJC               relativePTClocation   half_life_PC1   cdsseqs_AU_content   mut.exon   phastcons_new3utr_first200_median   phylop_ptc_to_ejc_median   AmountExonsAfter
-chr8_41977233_C_A    ENST00000265713     ENST00000265713.8    KAT6A  ENSG00000083168   -       upstream               0.3421                1.0523          0.511                5          0.982                                1.845                      12
+variant_id           txnames             transcript_id_used   gene   gene_id           strand  last.EJC   relativePTClocation   half_life_PC1   cdsseqs_AU_content   mut.exon   cdsseqs_UC_content   phastcons_new3utr_first200_median   MedianExpression_log2
+chr8_41977233_C_A    ENST00000265713     ENST00000265713.8    KAT6A  ENSG00000083168   -       upstream   0.3421                1.0523          0.511                5          0.498                0.982                               4.113
 ```
 
 ---

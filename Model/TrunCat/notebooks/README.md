@@ -49,13 +49,13 @@ Domain drop rules, automated quality checks, imputation.
 | Rule | Decision |
 |------|----------|
 | AU vs GC content | Keep AU (biologically relevant), drop GC |
-| RBP motif features | Protect all ~700 from correlation removal |
+| RBP motif features | Protect all RBP motif features from correlation removal |
 | PTC distance | Keep `relativePTClocation` (normalized), drop raw distances |
 | Leaky features | Drop `ALLELE.RAT`, `refCount`, `altCount`, `Freq`, `Whole.Blood` |
 | Expression | Keep `MedianExpression_log2`, drop raw `MedianExpression` |
 | UTR composition | Keep whole + first100 + last100 windows; drop 200nt windows |
 | Identifiers | Drop `variantID`, `GENE_ID`, coordinates, allele strings |
-| Zero-importance RBP | Drop 109 features confirmed zero importance across all CV folds |
+| Zero-importance RBP | Drop 327 motif features with zero importance (fixed list from the all-motif run; see notebook 02) |
 
 Automated checks then remove duplicate columns, zero-variance features, and
 correlated features (Pearson |r| > 0.95, with RBP protection). Missing values
