@@ -432,7 +432,7 @@ TrunCat
 The model-development feature matrix reported in the study contains:
 
 ```text
-5,749 variants × 853 features
+5,749 variants × 619 features
 ```
 
 gnomAD, ClinVar, and GREGoR do **not** contribute observations to model training. After TrunCat model development, these datasets are independently processed through the compatible annotation and feature-generation workflow for prediction.

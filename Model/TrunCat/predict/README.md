@@ -38,7 +38,7 @@ After notebook 02 finishes and `TOPMed_cleaned_v4.csv` exists:
 
 ```bash
 python scripts/export_training_medians.py \
-    --cleaned-csv /Users/jschmidt3/Iman_visualizations/spooky_model_v4.1/TOPMed_cleaned_v4.csv \
+    --cleaned-csv path/to/TOPMed_cleaned_v4.csv \
     --out models/training_medians.json
 ```
 
@@ -51,11 +51,11 @@ If the cohort CSV is already fully merged (has all v4 annotations):
 
 ```bash
 python scripts/predict.py \
-    --input  /Users/jschmidt3/Iman_visualizations/spooky_model_v4.1/predict/clinvar_df_stopgain_updated2026.csv \
-    --output /Users/jschmidt3/Iman_visualizations/spooky_model_v4.1/predict/clinvar_predictions_v4.1.csv \
+    --input  path/to/predict/clinvar_df_stopgain_updated2026.csv \
+    --output path/to/predict/clinvar_predictions_v4.1.csv \
     --label  clinvar_2026 \
     --extra-id-cols GENE_ID hgnc_symbol clinvar_significance \
-    --audit-json /Users/jschmidt3/Iman_visualizations/spooky_model_v4.1/predict/clinvar_audit_v4.1.json
+    --audit-json path/to/predict/clinvar_audit_v4.1.json
 ```
 
 If the cohort CSV only has the baseline features and the v4 annotation files
