@@ -66,6 +66,18 @@ import shap
 # CONFIG
 # ==============================================================================
 
+def warn_if_unsupported_sklearn():
+    """scikit-learn 1.8 changed StratifiedGroupKFold splits, so CV numbers differ from the reported ones."""
+    try:
+        import sklearn
+        major, minor = (int(x) for x in sklearn.__version__.split(".")[:2])
+        if (major, minor) >= (1, 8):
+            print(f"⚠️  scikit-learn {sklearn.__version__}: gene-grouped CV folds differ from the reported results "
+                  "(tested with 1.3-1.7). Use scikit-learn<1.8 to reproduce them.")
+    except Exception:
+        pass
+
+
 def load_config(config_path=None):
     """Load config and resolve all paths relative to repo root."""
     if config_path is None:
@@ -184,7 +196,9 @@ def load_data(PATH_INPUT, GENE_IDS_PATH, TARGET, CATEGORICAL_FEATURES):
     print(f"Categorical features from config: {len(CATEGORICAL_FEATURES)}")
 
     cat_features = [c for c in CATEGORICAL_FEATURES if c in X.columns]
-    other_objs = [c for c in X.columns if X[c].dtype == "object" and c not in cat_features]
+    other_objs = [c for c in X.columns
+                  if (X[c].dtype == "object" or pd.api.types.is_string_dtype(X[c].dtype))   # pandas>=3: "str", not "object"
+                  and c not in cat_features]
     cat_features.extend(other_objs)
 
     cat_indices = [X.columns.get_loc(c) for c in cat_features]
@@ -892,6 +906,7 @@ def main():
     args = parser.parse_args()
 
     try:
+        warn_if_unsupported_sklearn()
         config = load_config(args.config)
 
         (PATH_INPUT, GENE_IDS_PATH, TARGET, RANDOM_SEED, N_FOLDS, CATBOOST_PARAMS,
