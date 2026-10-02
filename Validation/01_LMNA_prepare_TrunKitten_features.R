@@ -30,7 +30,7 @@ suppressPackageStartupMessages({
 
 args <- commandArgs(trailingOnly = TRUE)
 
-if (length(args) != 5) {
+if (length(args) != 6) {
   stop(
     paste0(
       "Usage:\n",
@@ -45,7 +45,8 @@ PTC_FILE      <- args[1]
 GTF_FILE      <- args[2]
 GENOME_FILE   <- args[3]
 HALF_LIFE_FILE <- args[4]
-OUTPUT_DIR    <- args[5]
+EXPRESSION_FILE <- args[5]
+OUTPUT_DIR    <- args[6]
 
 dir.create(
   OUTPUT_DIR,
@@ -449,9 +450,78 @@ lmna <- lmna %>%
       LMNA_half_life_PC1
   )
 
-
 ############################################################
-# 15. RECONSTRUCT NATIVE LMNA CODON
+# 15. ADD LMNA MEDIAN EXPRESSION
+############################################################
+
+expression <-
+  read.delim(
+    EXPRESSION_FILE,
+    skip = 2,
+    check.names = FALSE
+  )
+
+
+# Extract LMNA expression across all GTEx tissues
+LMNA_expression <-
+  expression %>%
+  filter(
+    Description == "LMNA"
+  )
+
+
+# Confirm one LMNA gene row was found
+stopifnot(
+  nrow(LMNA_expression) == 1
+)
+
+
+# GTEx tissue columns
+tissue_cols <-
+  setdiff(
+    colnames(LMNA_expression),
+    c(
+      "Name",
+      "Description"
+    )
+  )
+
+
+# Median expression across tissues
+LMNA_MedianExpression <-
+  median(
+    as.numeric(
+      LMNA_expression[
+        1,
+        tissue_cols
+      ]
+    ),
+    na.rm = TRUE
+  )
+
+
+LMNA_MedianExpression
+# Expected: 96.3178
+
+
+# Log2 transformation used by TrunKitten
+LMNA_MedianExpression_log2 <-
+  log2(
+    LMNA_MedianExpression + 1
+  )
+
+
+LMNA_MedianExpression_log2
+
+
+# Add to all LMNA variants
+lmna <- lmna %>%
+  mutate(
+    MedianExpression_log2 =
+      LMNA_MedianExpression_log2
+  )
+############################################################
+# 16. RECONSTRUCT NATIVE LMNA CODON
 ############################################################
 
 lmna <- lmna %>%
@@ -475,7 +545,7 @@ lmna %>%
 
 
 ############################################################
-# 16. COUNT NUMBER OF NUCLEOTIDE CHANGES
+# 17. COUNT NUMBER OF NUCLEOTIDE CHANGES
 ############################################################
 
 count_diffs <- function(ref, alt) {
@@ -516,7 +586,7 @@ table(lmna$n_nt_changes)
 
 
 ############################################################
-# 17. KEEP TRUE SINGLE-NUCLEOTIDE STOP-GAIN VARIANTS
+# 18. KEEP TRUE SINGLE-NUCLEOTIDE STOP-GAIN VARIANTS
 ############################################################
 
 lmna_snv <- lmna %>%
@@ -530,7 +600,7 @@ nrow(lmna_snv)
 
 
 ############################################################
-# 18. IDENTIFY EXACT ALTERED BASE WITHIN CODON
+# 19. IDENTIFY EXACT ALTERED BASE WITHIN CODON
 ############################################################
 
 find_changed_base <- function(ref, alt) {
@@ -582,7 +652,7 @@ lmna_snv <- lmna_snv %>%
 
 
 ############################################################
-# 19. CONVERT CDS POSITION -> GENOMIC POSITION
+# 20. CONVERT CDS POSITION -> GENOMIC POSITION
 ############################################################
 
 coding_to_genomic <- function(cdna_pos) {
@@ -617,7 +687,7 @@ lmna_snv <- lmna_snv %>%
 
 
 ############################################################
-# 20. CREATE STANDARD VARIANT IDENTIFIERS
+# 21. CREATE STANDARD VARIANT IDENTIFIERS
 ############################################################
 
 lmna_snv <- lmna_snv %>%
@@ -638,7 +708,7 @@ lmna_snv <- lmna_snv %>%
 
 
 ############################################################
-# 21. QC: CONFIRM REF ALLELES AGAINST GRCh38
+# 22. QC: CONFIRM REF ALLELES AGAINST GRCh38
 ############################################################
 
 test_gr <- GRanges(
@@ -668,7 +738,7 @@ table(
 
 
 ############################################################
-# 22. EXPORT VARIANTS FOR CONSERVATION ANNOTATION
+# 23. EXPORT VARIANTS FOR CONSERVATION ANNOTATION
 ############################################################
 
 LMNA_Cortazar_TrunKitten_variants <-
