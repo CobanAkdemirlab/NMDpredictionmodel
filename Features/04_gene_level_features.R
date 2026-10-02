@@ -138,20 +138,20 @@ variants <- variants %>%
 # Categorization 
 # pli
 
-ind <- which(df$pLI<0.35 )
-df$pLI.cat <- rep('NA',nrow(df))
-df$pLI.cat[ind] <- 'highly tolerant (pLI<0.35)'
+ind <- which(variants$pLI<0.35 )
+variants$pLI.cat <- rep('NA',nrow(variants))
+variants$pLI.cat[ind] <- 'highly tolerant (pLI<0.35)'
 
 
-ind <- which(df$pLI>=0.35 & df$pLI<0.65 )
-df$pLI.cat[ind] <- 'medium tolerant (0.35=<pLI<0.65)'
+ind <- which(variants$pLI>=0.35 & variants$pLI<0.65 )
+variants$pLI.cat[ind] <- 'medium tolerant (0.35=<pLI<0.65)'
 
 
-ind <- which(df$pLI>=0.65 )
-df$pLI.cat[ind] <- 'highly intolerant (pLI>=0.65)'
+ind <- which(variants$pLI>=0.65 )
+variants$pLI.cat[ind] <- 'highly intolerant (pLI>=0.65)'
 
 #level of intolerance
-new_topmed$loeuf_cat = cut(new_topmed$oe_lof_upper, breaks = c(0,0.2,0.6,2), 
+variants$loeuf_cat = cut(variants$oe_lof_upper, breaks = c(0,0.2,0.6,2), 
                            labels = c('Very LoF-intolerant (0-0.2)','Moderately_constrained (0.2-0.6)','LoF_tolerant (0.6-2)')) #level of intolerance
 
 # ------------------------------------------------------------------------------
