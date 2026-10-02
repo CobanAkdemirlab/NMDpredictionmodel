@@ -11,6 +11,7 @@
 #   2. GENCODE v26 GTF
 #   3. GRCh38 reference FASTA
 #   4. mRNA half-life PC1 table
+#   5. expression 
 #
 # Outputs:
 #   LMNA_Cortazar_TrunKitten_variants.csv
