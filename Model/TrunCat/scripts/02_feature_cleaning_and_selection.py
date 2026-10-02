@@ -25,7 +25,8 @@ Steps:
   4. Prepare and impute categorical features
   5. Save cleaned dataset (+ key), feature list, and gene_ids.csv
 
-Output: data/TOPMed_cleaned.csv, data/final_feature_list.csv, data/TOPMed_gene_ids.csv
+Output: data/TOPMed_cleaned.csv, data/final_feature_list.csv, data/TOPMed_gene_ids.csv,
+        predict/training_medians.json (medians used to impute external cohorts)
 
 Usage:
     python 02_feature_cleaning_and_selection.py
@@ -37,6 +38,7 @@ import numpy as np
 from pathlib import Path
 import yaml
 import sys
+import json
 import argparse
 
 
@@ -59,6 +61,7 @@ def load_config(config_path=None):
         config = yaml.safe_load(f)
 
     BASE_DIR = config_path.parent.parent
+    config['_base_dir'] = str(BASE_DIR)
     for key, val in config['data'].items():
         config['data'][key] = str(BASE_DIR / val)
     for key, val in config['output'].items():
@@ -437,6 +440,116 @@ def apply_manual_drops(X, CATEGORICAL_FEATURES, RBP_PREFIXES):
     else:
         print("  ⚠️  PTC_dist_exon_end_0b not found")
 
+    # ── Corrected-features rerun (Sept 2026) ──────────────────────────────────────
+    drop_manual.update({
+        "minus1_is_G": "Redundant - overlaps PTC.minus1.aa",
+        "minus2_is_G": "Redundant - overlaps PTC.minus2.aa",
+        "plus1_is_G":  "Redundant - overlaps PTC.plus1.aa",
+        "plus2_is_G":  "Redundant - overlaps PTC.plus2.aa",
+        "cdsseq_AUcontentfirst200": "Redundant - r=0.905 with cdsseq_AUcontentfirst100; first100 kept",
+        "cdsseq_AUcontentlast200":  "Redundant - r=0.939 with cdsseq_AUcontentlast100; last100 kept",
+        "cdsseq_UCcontentfirst200": "Redundant - first100 kept; consistent with AU strategy",
+        "cdsseq_UCcontentlast200":  "Redundant - last100 kept; consistent with AU strategy",
+        "penultimate.full":     "Leaky - indicator of PTC in penultimate exon; encodes 50-nt rule",
+        "penultimate.last50bp": "Leaky - indicator of PTC in last 50 bp of penultimate exon; encodes 50-nt rule",
+        "cdsseq.introns": "Constant - every transcript has CDS introns; old flag was wrong for 17% of variants",
+    })
+
+    # Old (pre-correction) importance-based RBP drops: remove them
+    for k in [k for k, v in drop_manual.items() if v.startswith("Zero importance")]:
+        drop_manual.pop(k)
+
+    # Run A zero-importance RBP drops: exactly 0 in all 5 CV folds (327 motif features, one round)
+    ZERO_IMPORTANCE_RUN_A = [
+        # ptc_pm100 (48)
+        "ptc_pm100.A1CF", "ptc_pm100.AGO1", "ptc_pm100.AKAP1", "ptc_pm100.CELF1", "ptc_pm100.CNOT4",
+        "ptc_pm100.CPEB4", "ptc_pm100.CSTF2", "ptc_pm100.DAZAP1", "ptc_pm100.ELAVL2",
+        "ptc_pm100.ELAVL3", "ptc_pm100.ELAVL4", "ptc_pm100.ENOX1", "ptc_pm100.ESRP2", "ptc_pm100.FUS",
+        "ptc_pm100.FXR1", "ptc_pm100.HNRNPA1L2", "ptc_pm100.HNRNPC", "ptc_pm100.HNRNPD",
+        "ptc_pm100.HNRNPU", "ptc_pm100.IGHMBP2", "ptc_pm100.KHDRBS1", "ptc_pm100.KHDRBS2",
+        "ptc_pm100.KHDRBS3", "ptc_pm100.MSI1", "ptc_pm100.NOVA1", "ptc_pm100.PABPC3",
+        "ptc_pm100.PABPN1", "ptc_pm100.PPRC1", "ptc_pm100.PUM2", "ptc_pm100.RALY", "ptc_pm100.RBM14",
+        "ptc_pm100.RBM25", "ptc_pm100.RBM28", "ptc_pm100.RBM3", "ptc_pm100.RBM42", "ptc_pm100.RBM8A",
+        "ptc_pm100.RBMS1", "ptc_pm100.RBMS3", "ptc_pm100.RBMY1A1", "ptc_pm100.SNRPB2",
+        "ptc_pm100.SRSF4", "ptc_pm100.SYNCRIP", "ptc_pm100.TIAL1", "ptc_pm100.U2AF2", "ptc_pm100.YBX2",
+        "ptc_pm100.ZCRB1", "ptc_pm100.ZFP36L2", "ptc_pm100.ZNF638",
+        # ptc_to_ejc (74)
+        "ptc_to_ejc.A1CF", "ptc_to_ejc.AGO1", "ptc_to_ejc.AGO2", "ptc_to_ejc.AKAP1",
+        "ptc_to_ejc.ANKHD1", "ptc_to_ejc.CELF4", "ptc_to_ejc.CELF5", "ptc_to_ejc.CELF6",
+        "ptc_to_ejc.CPEB2", "ptc_to_ejc.CPEB4", "ptc_to_ejc.DAZAP1", "ptc_to_ejc.ELAVL1",
+        "ptc_to_ejc.ELAVL2", "ptc_to_ejc.ELAVL3", "ptc_to_ejc.ELAVL4", "ptc_to_ejc.ENOX1",
+        "ptc_to_ejc.ERI1", "ptc_to_ejc.ESRP2", "ptc_to_ejc.FXR2", "ptc_to_ejc.G3BP1",
+        "ptc_to_ejc.HNRNPA1L2", "ptc_to_ejc.HNRNPC", "ptc_to_ejc.HNRNPD", "ptc_to_ejc.HNRNPDL",
+        "ptc_to_ejc.HNRNPH3", "ptc_to_ejc.HNRNPL", "ptc_to_ejc.IGF2BP1", "ptc_to_ejc.IGF2BP2",
+        "ptc_to_ejc.IGF2BP3", "ptc_to_ejc.IGHMBP2", "ptc_to_ejc.KHDRBS1", "ptc_to_ejc.KHDRBS2",
+        "ptc_to_ejc.KHDRBS3", "ptc_to_ejc.MATR3", "ptc_to_ejc.MSI1", "ptc_to_ejc.NELFE",
+        "ptc_to_ejc.NONO", "ptc_to_ejc.NOVA1", "ptc_to_ejc.PABPC1", "ptc_to_ejc.PABPN1",
+        "ptc_to_ejc.PPRC1", "ptc_to_ejc.PUM1", "ptc_to_ejc.PUM2", "ptc_to_ejc.RALY", "ptc_to_ejc.RBM14",
+        "ptc_to_ejc.RBM24", "ptc_to_ejc.RBM25", "ptc_to_ejc.RBM28", "ptc_to_ejc.RBM3",
+        "ptc_to_ejc.RBM42", "ptc_to_ejc.RBM5", "ptc_to_ejc.RBM8A", "ptc_to_ejc.RBMS1",
+        "ptc_to_ejc.RBMS3", "ptc_to_ejc.RBMX", "ptc_to_ejc.RBMY1A1", "ptc_to_ejc.RC3H1",
+        "ptc_to_ejc.SAMD4A", "ptc_to_ejc.SNRNP70", "ptc_to_ejc.SNRPA", "ptc_to_ejc.SNRPB2",
+        "ptc_to_ejc.SRP14", "ptc_to_ejc.SRSF10", "ptc_to_ejc.SSB", "ptc_to_ejc.SYNCRIP",
+        "ptc_to_ejc.TRA2A", "ptc_to_ejc.TRA2B", "ptc_to_ejc.U2AF2", "ptc_to_ejc.YBX2",
+        "ptc_to_ejc.ZC3H10", "ptc_to_ejc.ZCRB1", "ptc_to_ejc.ZFP36", "ptc_to_ejc.ZFP36L2",
+        "ptc_to_ejc.ZNF638",
+        # ejc_pm100 (57)
+        "ejc_pm100.A1CF", "ejc_pm100.AGO1", "ejc_pm100.AGO2", "ejc_pm100.ANKHD1", "ejc_pm100.CELF5",
+        "ejc_pm100.CPEB4", "ejc_pm100.DAZAP1", "ejc_pm100.DDX19B", "ejc_pm100.ELAVL1",
+        "ejc_pm100.ELAVL2", "ejc_pm100.ELAVL4", "ejc_pm100.ERI1", "ejc_pm100.ESRP2", "ejc_pm100.FUS",
+        "ejc_pm100.FXR1", "ejc_pm100.G3BP1", "ejc_pm100.HNRNPA1L2", "ejc_pm100.HNRNPC",
+        "ejc_pm100.HNRNPD", "ejc_pm100.HNRNPU", "ejc_pm100.IFIH1", "ejc_pm100.IGF2BP1",
+        "ejc_pm100.IGF2BP3", "ejc_pm100.IGHMBP2", "ejc_pm100.KHDRBS1", "ejc_pm100.MATR3",
+        "ejc_pm100.MSI1", "ejc_pm100.PABPC1", "ejc_pm100.PABPC3", "ejc_pm100.PPRC1", "ejc_pm100.PUM2",
+        "ejc_pm100.QKI", "ejc_pm100.RALY", "ejc_pm100.RBFOX1", "ejc_pm100.RBM14", "ejc_pm100.RBM24",
+        "ejc_pm100.RBM25", "ejc_pm100.RBM28", "ejc_pm100.RBM3", "ejc_pm100.RBM4", "ejc_pm100.RBM41",
+        "ejc_pm100.RBM42", "ejc_pm100.RBM8A", "ejc_pm100.RBMS1", "ejc_pm100.RBMS3", "ejc_pm100.SNRPB2",
+        "ejc_pm100.SRP14", "ejc_pm100.SRSF4", "ejc_pm100.SYNCRIP", "ejc_pm100.TIA1", "ejc_pm100.TRA2A",
+        "ejc_pm100.TUT1", "ejc_pm100.U2AF2", "ejc_pm100.ZCRB1", "ejc_pm100.ZFP36", "ejc_pm100.ZFP36L2",
+        "ejc_pm100.ZNF638",
+        # newutr_all (15)
+        "newutr_all.ANKHD1", "newutr_all.DDX19B", "newutr_all.IGF2BP1", "newutr_all.IGF2BP3",
+        "newutr_all.KHDRBS1", "newutr_all.KHDRBS2", "newutr_all.KHDRBS3", "newutr_all.PCBP1",
+        "newutr_all.PCBP2", "newutr_all.PTBP1", "newutr_all.RBM8A", "newutr_all.SFPQ",
+        "newutr_all.SRSF2", "newutr_all.SYNCRIP", "newutr_all.YBX2",
+        # newutr_200 (54)
+        "newutr_200.A1CF", "newutr_200.AGO1", "newutr_200.AGO2", "newutr_200.ANKHD1",
+        "newutr_200.CELF4", "newutr_200.CELF5", "newutr_200.CELF6", "newutr_200.CNOT4",
+        "newutr_200.CPEB2", "newutr_200.CPEB4", "newutr_200.DAZAP1", "newutr_200.DDX19B",
+        "newutr_200.EIF4B", "newutr_200.ELAVL2", "newutr_200.ELAVL3", "newutr_200.FUS",
+        "newutr_200.FXR1", "newutr_200.HNRNPA1L2", "newutr_200.HNRNPAB", "newutr_200.HNRNPC",
+        "newutr_200.HNRNPD", "newutr_200.HNRNPLL", "newutr_200.HNRNPU", "newutr_200.IGF2BP1",
+        "newutr_200.IGHMBP2", "newutr_200.KHDRBS1", "newutr_200.KHDRBS2", "newutr_200.MATR3",
+        "newutr_200.MSI1", "newutr_200.NONO", "newutr_200.PABPC1", "newutr_200.PABPC3",
+        "newutr_200.PABPN1", "newutr_200.RALY", "newutr_200.RBFOX1", "newutr_200.RBM14",
+        "newutr_200.RBM24", "newutr_200.RBM25", "newutr_200.RBM3", "newutr_200.RBM41",
+        "newutr_200.RBM42", "newutr_200.RBM8A", "newutr_200.RBMS1", "newutr_200.RBMS3",
+        "newutr_200.RBMY1A1", "newutr_200.SNRNP70", "newutr_200.SRP14", "newutr_200.SSB",
+        "newutr_200.SYNCRIP", "newutr_200.TUT1", "newutr_200.ZC3H10", "newutr_200.ZCRB1",
+        "newutr_200.ZFP36L2", "newutr_200.ZNF638",
+        # utr3_all (27)
+        "utr3_all.AKAP1", "utr3_all.ANKHD1", "utr3_all.CELF4", "utr3_all.CELF5", "utr3_all.CPEB4",
+        "utr3_all.DAZAP1", "utr3_all.DDX19B", "utr3_all.ENOX1", "utr3_all.FUS", "utr3_all.FXR2",
+        "utr3_all.HNRNPA3", "utr3_all.HNRNPK", "utr3_all.HNRNPL", "utr3_all.IFIH1", "utr3_all.IGF2BP1",
+        "utr3_all.IGHMBP2", "utr3_all.MSI1", "utr3_all.PPRC1", "utr3_all.RBM41", "utr3_all.RBM6",
+        "utr3_all.RBM8A", "utr3_all.SYNCRIP", "utr3_all.TUT1", "utr3_all.U2AF2", "utr3_all.YBX2",
+        "utr3_all.ZCRB1", "utr3_all.ZNF638",
+        # utr3_200 (52)
+        "utr3_200.A1CF", "utr3_200.AGO2", "utr3_200.AKAP1", "utr3_200.ANKHD1", "utr3_200.CELF4",
+        "utr3_200.CELF5", "utr3_200.CNOT4", "utr3_200.CPEB2", "utr3_200.DDX19B", "utr3_200.EIF4B",
+        "utr3_200.ERI1", "utr3_200.FUS", "utr3_200.FXR2", "utr3_200.G3BP1", "utr3_200.G3BP2",
+        "utr3_200.HNRNPA1L2", "utr3_200.HNRNPAB", "utr3_200.HNRNPC", "utr3_200.HNRNPD",
+        "utr3_200.HNRNPL", "utr3_200.HNRNPM", "utr3_200.IGF2BP2", "utr3_200.IGF2BP3",
+        "utr3_200.IGHMBP2", "utr3_200.KHDRBS1", "utr3_200.KHDRBS2", "utr3_200.KHDRBS3",
+        "utr3_200.MATR3", "utr3_200.MSI1", "utr3_200.NONO", "utr3_200.PABPC1", "utr3_200.PABPC3",
+        "utr3_200.PABPN1", "utr3_200.PPRC1", "utr3_200.RALY", "utr3_200.RBM14", "utr3_200.RBM24",
+        "utr3_200.RBM25", "utr3_200.RBM28", "utr3_200.RBM41", "utr3_200.RBM6", "utr3_200.RBM8A",
+        "utr3_200.RBMS1", "utr3_200.RBMS3", "utr3_200.RBMY1A1", "utr3_200.RC3H1", "utr3_200.SAMD4A",
+        "utr3_200.SSB", "utr3_200.SYNCRIP", "utr3_200.YBX2", "utr3_200.ZC3H10", "utr3_200.ZCRB1",
+    ]
+    for f in ZERO_IMPORTANCE_RUN_A:
+        drop_manual[f] = "Zero importance across all CV folds (corrected-features run A)"
+
     # Apply
     features_to_drop = [col for col in drop_manual.keys() if col in X.columns]
     print(f"\nTotal manual drops: {len(features_to_drop)} features")
@@ -544,6 +657,12 @@ def prepare_categoricals_and_impute(X_cleaned, CATEGORICAL_FEATURES):
     print("CATEGORICAL FEATURE PREPARATION")
     print("=" * 80)
 
+    # ── Structural absence: no annotated 3'UTR -> no motif scan -> 0 hits ──────────
+    # (the old file coded these variants as 0; the corrected motif output has NA)
+    utr3_motif_cols = [c for c in X_cleaned.columns if c.startswith(("utr3_all.", "utr3_200."))]
+    n_na = int(X_cleaned[utr3_motif_cols].isna().any(axis=1).sum())
+    X_cleaned[utr3_motif_cols] = X_cleaned[utr3_motif_cols].fillna(0)
+    print(f"Zero-filled utr3 motif columns for {n_na} variants without a 3'UTR")
     declared_cat = CATEGORICAL_FEATURES
     print(f"Categorical features from config: {len(declared_cat)}")
     for feat in declared_cat:
@@ -569,7 +688,8 @@ def prepare_categoricals_and_impute(X_cleaned, CATEGORICAL_FEATURES):
     cat_features = [c for c in declared_cat if c in X_cleaned.columns]
     cat_features.extend(binary_features)
     other_objs = [c for c in X_cleaned.columns
-                  if X_cleaned[c].dtype == "object" and c not in cat_features]
+                  if (X_cleaned[c].dtype == "object" or pd.api.types.is_string_dtype(X_cleaned[c].dtype))
+                  and c not in cat_features]   # pandas>=3 stores strings as "str", not "object"
     cat_features.extend(other_objs)
     cat_features = list(set(cat_features))
 
@@ -617,6 +737,8 @@ def prepare_categoricals_and_impute(X_cleaned, CATEGORICAL_FEATURES):
         'phylop_old3utr_first200_median', 'phylop_old3utr_whole_median',
         'phastcons_ptc_to_ejc_median',
         'phylop_ptc_to_ejc_median',
+        'phastcons_ejc_100bp_median',
+        'phylop_ejc_100bp_median',
     ]
 
     print("\nZero-filling structurally absent UTR/positional features...")
@@ -791,7 +913,8 @@ def save_outputs(X_final, y, gene_ids, cat_features, feature_missingness, TARGET
     # feature_list describes trainable columns only — `key` isn't one.
     feature_list = pd.DataFrame({
         'feature': X_final.columns,
-        'dtype': [str(X_final[col].dtype) for col in X_final.columns],
+        'dtype': ['object' if pd.api.types.is_string_dtype(X_final[col].dtype) else str(X_final[col].dtype)
+                  for col in X_final.columns],   # pandas>=3 reports strings as 'str'; keep the file identical across versions
         'is_categorical': [col in cat_features for col in X_final.columns],
         'non_null_count': [feature_missingness.get(col, {}).get('non_null_count', len(X_final))
                            for col in X_final.columns],
@@ -816,6 +939,41 @@ def save_outputs(X_final, y, gene_ids, cat_features, feature_missingness, TARGET
     feature_list.to_csv(PATH_FEATURES, index=False)
     print(f"\n✓ Feature list saved: {PATH_FEATURES}")
 
+    # Medians of the features that are median-imputed at training time (same list as the
+    # imputation step above). predict.py uses them to impute external cohorts identically.
+    # A median-imputed column keeps its original median, so computing it from X_final is exact.
+    MEDIAN_IMPUTE_EXPLICIT = [
+        'pLI', 'oe_lof_upper',
+        'MedianExpression', 'MedianExpression_log2', 'Whole.Blood',
+        'half_life_PC1',
+        'CADD_phred',
+        'readthrough_score_hek293t',
+    ]
+    PATH_TRAINING_MEDIANS = Path(config['_base_dir']) / "predict" / "training_medians.json"
+
+    training_medians = {
+        c: float(X_final[c].median()) for c in MEDIAN_IMPUTE_EXPLICIT if c in X_final.columns
+    }
+
+    # Report any change versus the existing file before overwriting it
+    if PATH_TRAINING_MEDIANS.exists():
+        with open(PATH_TRAINING_MEDIANS) as f:
+            _old_medians = json.load(f)
+        _changed = {
+            c: (_old_medians.get(c), v) for c, v in training_medians.items()
+            if c not in _old_medians or abs(_old_medians[c] - v) > 1e-9
+        }
+        _dropped = [c for c in _old_medians if c not in training_medians]
+        print("\nTraining medians vs existing file: " +
+              ("unchanged" if not _changed and not _dropped else f"changed={_changed} removed={_dropped}"))
+
+    PATH_TRAINING_MEDIANS.parent.mkdir(parents=True, exist_ok=True)
+    with open(PATH_TRAINING_MEDIANS, "w") as f:
+        json.dump(training_medians, f, indent=2)
+    print(f"\n✓ Training medians saved: {PATH_TRAINING_MEDIANS}")
+    for c, v in training_medians.items():
+        print(f"    {c}: {v:.4f}")
+
     print(f"""
 Dataset ready for model training:
   - Samples: {len(final_df)}
@@ -827,6 +985,7 @@ Custom rules applied:
   ✓ Protected ALL RBP features (biologically meaningful)
   ✓ Kept PTC.2.EJC over PTC_dist_exon_end_0b
   ✓ Replaced AverageCodonRNAUsage with codon optimality features
+  ✓ Exported training medians for predict.py
 
 Ready for model training! (03_model_training.py)
 """)
