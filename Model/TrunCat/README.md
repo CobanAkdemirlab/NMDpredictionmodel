@@ -4,10 +4,10 @@
 
 TrunCat is the full NMD-escape prediction pipeline: a CatBoost classifier
 trained on ~5,700 premature termination codon (PTC) variants from TOPMed,
-using ~853 transcript-level, genomic, and sequence-based features to predict
+using 619 transcript-level, genomic, and sequence-based features to predict
 whether stopgain variants will escape nonsense-mediated decay surveillance.
 
-**Out-of-fold ROC-AUC ≈ 0.776** | **Youden-optimal threshold ≈ 0.42**
+**Out-of-fold ROC-AUC ≈ 0.777** | **Youden-optimal threshold ≈ 0.47**
 
 ## Layout
 
@@ -40,11 +40,11 @@ See [`notebooks/README.md`](notebooks/README.md) for a per-notebook walkthrough.
 ## Top predictive features (mean |SHAP|)
 
 `last.EJC`, `relativePTClocation`, `half_life_PC1`, `cdsseqs_AU_content`,
-`mut.exon`, `phastcons_new3utr_first200_median`, `phylop_ptc_to_ejc_median`,
-`AmountExonsAfter`.
+`mut.exon`, `cdsseqs_UC_content`, `phastcons_new3utr_first200_median`,
+`AmountExonsAfter`, `MedianExpression_log2`, `CADD_phred`.
 
 ## Related
 
-For a lightweight version using only the top 8 features — suitable for
+For a lightweight version using only 8 features — suitable for
 scoring external cohorts without reproducing the full annotation pipeline —
 see [`../TrunKitten/`](../TrunKitten/).

@@ -56,6 +56,8 @@ Model/TrunCat/results/.ipynb_checkpoints/
 Model/TrunCat/predict/annotations/
 Model/TrunCat/predict/overlap/
 Model/TrunCat/predict/*stopgain*.csv
+# Cohort tables built from Iman's files + annotation outputs (large, regenerable)
+Model/TrunCat/predict/*_october26*.csv
 Model/TrunCat/predict/*archive*.csv
 Model/TrunCat/predict/Untitled.ipynb
 *.db
@@ -65,6 +67,8 @@ Model/TrunCat/predict/Untitled.ipynb
 Model/TrunKitten/inputs/*
 !Model/TrunKitten/inputs/README.md
 !Model/TrunKitten/inputs/variants.example.tsv
+!Model/TrunKitten/inputs/half_life_pc1.xlsx
+!Model/TrunKitten/inputs/shap_feature_importance_rankings.csv
 Model/TrunKitten/data/*
 !Model/TrunKitten/data/README.md
 Model/TrunKitten/results/models/

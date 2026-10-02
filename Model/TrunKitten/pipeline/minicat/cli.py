@@ -1,7 +1,8 @@
 """TrunKitten annotation CLI — command-line entry point.
 
 Annotates PTC / stop-gain variants with the 8 features required by
-TrunKitten, the reduced NMD-prediction model derived from TrunCat.
+TrunKitten, the reduced (8-feature, leave-one-fold-out-stable) NMD-prediction
+model derived from TrunCat.
 
 Usage:
     python -m minicat.cli --config config/config.yaml
@@ -24,6 +25,7 @@ from .config import PipelineConfig
 from .gtf_index import build_transcript_index, strip_version
 from .conservation import ConservationSource
 from .halflife import HalfLifeTable
+from .expression import GTExExpressionTable
 from .features import FeatureAnnotator
 
 
@@ -67,9 +69,8 @@ def run(cfg: PipelineConfig) -> None:
     fasta = Fasta(str(cfg.fasta), as_raw=False, sequence_always_upper=True)
     log.info(f"Opened FASTA: {cfg.fasta}  ({len(fasta.keys())} seqs)")
 
-    # 4. Conservation sources
+    # 4. Conservation source (phastCons only; phyloP is no longer used)
     phastcons = ConservationSource(cfg.phastcons, chr_style=cfg.chr_style)
-    phylop    = ConservationSource(cfg.phylop,    chr_style=cfg.chr_style)
 
     # 5. Half-life table
     hl = HalfLifeTable(
@@ -81,18 +82,25 @@ def run(cfg: PipelineConfig) -> None:
         strip_versions=cfg.strip_versions,
     )
 
-    # 6. Annotator
+    # 6. GTEx expression table (MedianExpression_log2)
+    expr = GTExExpressionTable(
+        cfg.gtex,
+        strip_versions=cfg.strip_versions,
+        symbol_fallback=cfg.expression_symbol_fallback,
+    )
+
+    # 7. Annotator
     annot = FeatureAnnotator(
         tx_index=tx_index,
         fasta=fasta,
         phastcons=phastcons,
-        phylop=phylop,
         halflife=hl,
+        expression=expr,
         strip_versions=cfg.strip_versions,
         new3utr_window=cfg.new3utr_window,
     )
 
-    # 7. Iterate (single-threaded; BigWig handles are not process-safe, and
+    # 8. Iterate (single-threaded; BigWig handles are not process-safe, and
     #    per-variant work is I/O-dominated — for large cohorts, use a thread
     #    pool or chunk by chromosome).
     feat_rows, qc_rows = [], []
@@ -103,13 +111,13 @@ def run(cfg: PipelineConfig) -> None:
         if i % 500 == 0:
             log.info(f"  annotated {i:,} / {len(variants):,}")
 
-    # 8. Write outputs
+    # 9. Write outputs
     feat_df = pd.DataFrame(feat_rows)
     qc_df   = pd.DataFrame(qc_rows)
     feat_df.to_csv(cfg.out_features, sep="\t", index=False)
     qc_df.to_csv(cfg.out_qc, sep="\t", index=False)
 
-    # 9. Summary
+    # 10. Summary
     log.info("="*72)
     log.info(f"Wrote features: {cfg.out_features}  ({len(feat_df):,} rows)")
     log.info(f"Wrote QC:       {cfg.out_qc}")
@@ -117,18 +125,17 @@ def run(cfg: PipelineConfig) -> None:
     log.info(f"  version_mismatch:         {qc_df['version_mismatch'].sum():,}")
     log.info(f"  boundary_ambiguous:       {qc_df['boundary_ambiguous'].sum():,}")
     log.info(f"  new3utr_empty:            {qc_df['new3utr_empty'].sum():,}")
-    log.info(f"  ptc_to_ejc_empty:         {qc_df['ptc_to_ejc_empty'].sum():,}")
     log.info(f"  half_life_missing:        {qc_df['half_life_missing'].sum():,}")
+    log.info(f"  expression_missing:       {qc_df['expression_missing'].sum():,}")
     log.info(f"  any_conservation_missing: {qc_df['any_conservation_missing'].sum():,}")
 
     phastcons.close()
-    phylop.close()
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description="TrunKitten PTC annotation pipeline "
-                    "(reduced top-8 feature NMD model; package: minicat)"
+                    "(reduced 8-feature NMD model; package: minicat)"
     )
     ap.add_argument("--config", required=True, help="path to config YAML")
     ap.add_argument("--log-level", default="INFO")

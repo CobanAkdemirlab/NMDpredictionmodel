@@ -5,8 +5,9 @@ Reference FASTA is DNA (A/C/G/T). We build transcript-oriented sequences by:
   - strand: reverse-complementing each block and concatenating in descending
     genomic order so the result is 5'→3' in transcript orientation.
 
-AU "content" is computed on the DNA alphabet (AU = A+T); naming is kept
-as-trained. N bases are excluded.
+AU "content" is computed on the DNA alphabet (AU = A+T) and UC "content" as
+T+C; naming is kept as-trained. The denominator is the full sequence length
+(including any N bases), matching R's Biostrings::alphabetFrequency.
 """
 from __future__ import annotations
 from typing import List, Tuple, Optional
@@ -51,6 +52,17 @@ def _au_content(seq: str) -> float:
     return au / n
 
 
+def _uc_content(seq: str) -> float:
+    """UC content = (T + C) / len(seq) on the DNA alphabet. Same denominator
+    convention as `_au_content` (full length, including any N bases).
+    """
+    n = len(seq)
+    if n == 0:
+        return float("nan")
+    uc = sum(1 for b in seq if b == "T" or b == "C")
+    return uc / n
+
+
 def cds_sequence(fasta: Fasta, tx: TranscriptRecord) -> str:
     """Full CDS string INCLUDING the stop codon, transcript-oriented.
 
@@ -66,26 +78,29 @@ def cds_sequence(fasta: Fasta, tx: TranscriptRecord) -> str:
 
 
 def compute_cds_composition(fasta: Fasta, tx: TranscriptRecord) -> dict:
-    """Compute the CDS-level composition feature kept in TrunKitten's 8-feature set.
+    """Compute the CDS-level composition features in TrunKitten's 8-feature set.
 
     Returns dict with:
-        cdsseqs_AU_content — AU content of the full CDS
+        cdsseqs_AU_content — AU (A+T) content of the full CDS
+        cdsseqs_UC_content — UC (T+C) content of the full CDS
         cds_length         — for QC only
 
-    `cdsseqs_UC_content` and `cdsseq_AUcontentlast200` were dropped from the
-    TrunKitten feature set (Sept 2026 CV-protocol correction; see
-    trunkitten_features.json) and are no longer computed here. If either is
-    ever needed again (e.g. for TrunCat, which still uses all three), restore
-    `_uc_content` and the last-200nt slice from git history.
+    Both are computed on the full annotated CDS including the native stop
+    codon (see cds_sequence), so they depend only on the transcript, not on
+    the variant position. `cdsseq_AUcontentlast200` is not part of TrunKitten
+    (removed during feature cleaning as redundant with the last-100-nt
+    version, r = 0.94) and is not computed here.
     """
     cds = cds_sequence(fasta, tx)
     L = len(cds)
     if L == 0:
         return {
             "cdsseqs_AU_content": float("nan"),
+            "cdsseqs_UC_content": float("nan"),
             "cds_length": 0,
         }
     return {
         "cdsseqs_AU_content": _au_content(cds),
+        "cdsseqs_UC_content": _uc_content(cds),
         "cds_length": L,
     }

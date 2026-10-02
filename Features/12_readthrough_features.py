@@ -31,13 +31,6 @@ import gzip
 
 warnings.filterwarnings('ignore')
 
-DEFAULT_CONFIG = {
-    'gtf': "/Users/jschmidt3/Iman_visualizations/efficient_motif/gencode.v26.primary_assembly.annotation.gtf.gz",
-    'genome_fa': "/Users/jschmidt3/Iman_visualizations/efficient_motif/hg38.fa",
-    'input_csv': "/Users/jschmidt3/Iman_visualizations/GnomAd_features/gnomAD_dfstopgain_filtered.csv",
-    'output_csv': "/Users/jschmidt3/Iman_visualizations/GnomAd_features/TOPMed_with_hek293t_readthrough_scores_FIXED.csv",
-    'threads': os.cpu_count() or 4
-}
 
 # ============================================================================
 # UTILITY FUNCTIONS
@@ -440,28 +433,24 @@ def process_variant_batch_FIXED(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="FIXED Readthrough Scoring - Uses txnames transcripts"
+        description="Score stop-gain variants for HEK293T readthrough potential (strict txnames + V3 matching)"
     )
-    parser.add_argument("--input", help="Input CSV")
-    parser.add_argument("--output", help="Output CSV")
-    parser.add_argument("--gtf", help="GTF file")
-    parser.add_argument("--genome", help="Genome FASTA")
-    parser.add_argument("--threads", type=int, help="Threads")
-    parser.add_argument("--batch-size", type=int, default=1000, help="Batch size")
-    
+    parser.add_argument("--input", required=True, help="Input CSV (needs txnames and V3 columns)")
+    parser.add_argument("--output", required=True, help="Output CSV")
+    parser.add_argument("--gtf", required=True, help="GENCODE GTF (.gtf or .gtf.gz)")
+    parser.add_argument("--genome", required=True, help="Genome FASTA (indexed with .fai)")
+    parser.add_argument("--threads", type=int, default=os.cpu_count() or 4, help="Worker processes")
+    parser.add_argument("--batch-size", type=int, default=1000, help="Variants per batch")
+
     args = parser.parse_args()
-    
-    config = DEFAULT_CONFIG.copy()
-    if args.input:
-        config['input_csv'] = args.input
-    if args.output:
-        config['output_csv'] = args.output
-    if args.gtf:
-        config['gtf'] = args.gtf
-    if args.genome:
-        config['genome_fa'] = args.genome
-    if args.threads:
-        config['threads'] = args.threads
+
+    config = {
+        'input_csv': args.input,
+        'output_csv': args.output,
+        'gtf': args.gtf,
+        'genome_fa': args.genome,
+        'threads': args.threads,
+    }
     
     print("=" * 80)
     print("FIXED READTHROUGH SCORING - USES TXNAMES TRANSCRIPTS")
@@ -550,9 +539,7 @@ def main():
     print("=" * 80)
     
     improvement = n_contexts/n_total*100 - 55.0
-    print(f"\nImprovement over previous version: +{improvement:.1f}%")
-    print(f"Expected success rate: 85-90%")
-    print(f"Actual success rate: {n_contexts/n_total*100:.1f}%")
+    
 
 if __name__ == "__main__":
     main()

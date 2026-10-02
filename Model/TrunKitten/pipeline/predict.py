@@ -1,4 +1,4 @@
-"""Predict NMD escape with TrunKitten — the reduced top-8 feature CatBoost
+"""Predict NMD escape with TrunKitten — the reduced 8-feature CatBoost
 model derived from TrunCat.
 
 Consumes the annotated.tsv produced by the TrunKitten annotation CLI
@@ -32,11 +32,13 @@ TrunCat's own predict notebooks — e.g.:
   "readthrough_score_hek293t": 67.86
 }
 Only columns present in the model's feature set are applied; for
-TrunKitten that's half_life_PC1.
+TrunKitten those are half_life_PC1 and MedianExpression_log2.
 
-Zero-fill columns (regions structurally absent, e.g. a variant with no
-new-3'UTR) aren't medians and aren't in that file — they're listed
-separately below as ZERO_FILL_COLUMNS.
+Zero-fill columns (regions structurally absent) aren't medians and aren't in
+that file — they're listed separately below as ZERO_FILL_COLUMNS. None of
+TrunKitten's 8 features is zero-filled in training (notebook 02), so the list
+is empty; a NaN phastcons_new3utr_first200_median is left to CatBoost's native
+NaN handling, as TrunCat's own predict.py does.
 """
 from __future__ import annotations
 import argparse
@@ -49,10 +51,10 @@ import numpy as np
 import pandas as pd
 from catboost import Pool
 
-ZERO_FILL_COLUMNS = [
-    "phastcons_new3utr_first200_median",
-    "phylop_ptc_to_ejc_median",
-]
+# Mirrors the structural zero-fill list in notebook 02 restricted to TrunKitten's
+# features. phylop_ptc_to_ejc_median (which was zero-filled) is no longer a feature, and
+# phastcons_new3utr_first200_median is NOT zero-filled in training.
+ZERO_FILL_COLUMNS: list[str] = []
 
 
 def apply_training_imputation(
@@ -95,7 +97,7 @@ def apply_training_imputation(
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
         description="TrunKitten scorer — predicts NMD escape using the "
-                    "reduced top-8 feature model derived from TrunCat."
+                    "reduced 8-feature model derived from TrunCat."
     )
     ap.add_argument("--annotated", required=True,
                     help="TSV from the TrunKitten annotation CLI "

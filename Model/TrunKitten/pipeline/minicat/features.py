@@ -1,6 +1,6 @@
 """Per-variant feature orchestration.
 
-Combines GTF index, FASTA, conservation sources, and half-life table into
+Combines GTF index, FASTA, phastCons, half-life and GTEx expression tables into
 a single callable that takes a variant row and returns a feature dict.
 """
 from __future__ import annotations
@@ -15,16 +15,15 @@ from .gtf_index import TranscriptRecord, lookup_transcript, strip_version
 from .transcript import (
     PTCLocation,
     locate_ptc_in_transcript,
-    amount_exons_after,
     last_ejc_category,
     relative_ptc_location,
     coding_exon_rank,
-    ptc_to_ejc_interval,
     new3utr_blocks,
 )
 from .sequence import compute_cds_composition
 from .conservation import ConservationSource
 from .halflife import HalfLifeTable
+from .expression import GTExExpressionTable
 
 log = logging.getLogger(__name__)
 
@@ -48,21 +47,21 @@ class AnnotationResult:
     tx_not_in_gtf: bool
     version_mismatch: bool
     new3utr_empty: bool
-    ptc_to_ejc_empty: bool
     half_life_missing: bool
+    expression_missing: bool
     any_conservation_missing: bool
-    # features (8 — TrunKitten Sept 2026 feature set)
+    # features (8 — TrunKitten final feature set; order = trunkitten_features.json)
     last_EJC: Optional[str]
     relativePTClocation: Optional[float]
     half_life_PC1: Optional[float]
     cdsseqs_AU_content: Optional[float]
     mut_exon: Optional[int]
+    cdsseqs_UC_content: Optional[float]
     phastcons_new3utr_first200_median: Optional[float]
-    phylop_ptc_to_ejc_median: Optional[float]
-    AmountExonsAfter: Optional[int]
+    MedianExpression_log2: Optional[float]
 
     def to_feature_row(self) -> Dict[str, Any]:
-        """8-feature row with the canonical column names (including dots)."""
+        """8-feature row (plus identifiers) with the canonical column names (including dots)."""
         return {
             "variant_id": self.variant_id,
             "txnames": self.txnames,
@@ -75,9 +74,9 @@ class AnnotationResult:
             "half_life_PC1": self.half_life_PC1,
             "cdsseqs_AU_content": self.cdsseqs_AU_content,
             "mut.exon": self.mut_exon,
+            "cdsseqs_UC_content": self.cdsseqs_UC_content,
             "phastcons_new3utr_first200_median": self.phastcons_new3utr_first200_median,
-            "phylop_ptc_to_ejc_median": self.phylop_ptc_to_ejc_median,
-            "AmountExonsAfter": self.AmountExonsAfter,
+            "MedianExpression_log2": self.MedianExpression_log2,
         }
 
     def to_qc_row(self) -> Dict[str, Any]:
@@ -97,8 +96,8 @@ class AnnotationResult:
             "tx_not_in_gtf": self.tx_not_in_gtf,
             "version_mismatch": self.version_mismatch,
             "new3utr_empty": self.new3utr_empty,
-            "ptc_to_ejc_empty": self.ptc_to_ejc_empty,
             "half_life_missing": self.half_life_missing,
+            "expression_missing": self.expression_missing,
             "any_conservation_missing": self.any_conservation_missing,
         }
 
@@ -111,16 +110,16 @@ class FeatureAnnotator:
         tx_index: Dict[str, TranscriptRecord],
         fasta: Fasta,
         phastcons: ConservationSource,
-        phylop: ConservationSource,
         halflife: HalfLifeTable,
+        expression: GTExExpressionTable,
         strip_versions: bool = True,
         new3utr_window: int = 200,
     ):
         self.tx_index = tx_index
         self.fasta = fasta
         self.phastcons = phastcons
-        self.phylop = phylop
         self.halflife = halflife
+        self.expression = expression
         self.strip_versions = strip_versions
         self.new3utr_window = new3utr_window
 
@@ -170,15 +169,13 @@ class FeatureAnnotator:
         #   - mut.exon          → coding-exon rank (falls back to transcript rank
         #                         if PTC exon is non-coding — shouldn't happen for stop-gains)
         #   - relativePTClocation → PTC_CDS_pos / CDS_length (CDS-internal; NOT tx-spliced)
-        #   - AmountExonsAfter  → coding exons strictly after (matches 100%)
         last_ejc = last_ejc_category(tx, loc)
         rel_ptc  = relative_ptc_location(tx, ptc_pos)
         coding_rank = coding_exon_rank(tx, loc.exon_rank)
         mut_exon = coding_rank if coding_rank is not None else loc.exon_rank
-        n_after  = amount_exons_after(tx, loc.exon_rank)
         coding_exon_count = sum(tx.coding_exon_flags())
 
-        # --- CDS sequence composition feature ---
+        # --- CDS sequence composition features (AU and UC content) ---
         cds_comp = compute_cds_composition(self.fasta, tx)
 
         # --- half_life_PC1 ---
@@ -192,6 +189,14 @@ class FeatureAnnotator:
         )
         half_life_missing = hl is None
 
+        # --- MedianExpression_log2 (GTEx v8, same ID/symbol lookup as half-life) ---
+        expr = self.expression.lookup(
+            tx.gene_id,
+            strip_versions=self.strip_versions,
+            gene_symbol=gene if gene else None,
+        )
+        expression_missing = expr is None
+
         # --- phastcons_new3utr_first200_median ---
         new3_blocks, taken = new3utr_blocks(
             tx, ptc_pos, loc, window=self.new3utr_window,
@@ -202,15 +207,7 @@ class FeatureAnnotator:
         else:
             phc_new3, _bp, valid = self.phastcons.median_over_blocks(new3_blocks)
 
-        # --- phylop_ptc_to_ejc_median ---
-        p2e = ptc_to_ejc_interval(tx, ptc_pos, loc)
-        ptc_to_ejc_empty = (p2e is None)
-        if ptc_to_ejc_empty:
-            phy_p2e = float("nan")
-        else:
-            phy_p2e, _bp, _valid = self.phylop.median_over_blocks([p2e])
-
-        any_cons_miss = _is_nan(phc_new3) or _is_nan(phy_p2e)
+        any_cons_miss = _is_nan(phc_new3)
 
         return AnnotationResult(
             variant_id=variant_id,
@@ -229,17 +226,17 @@ class FeatureAnnotator:
             tx_not_in_gtf=False,
             version_mismatch=version_mismatch,
             new3utr_empty=new3utr_empty,
-            ptc_to_ejc_empty=ptc_to_ejc_empty,
             half_life_missing=half_life_missing,
+            expression_missing=expression_missing,
             any_conservation_missing=any_cons_miss,
             last_EJC=last_ejc,
             relativePTClocation=rel_ptc,
             half_life_PC1=hl,
             cdsseqs_AU_content=cds_comp["cdsseqs_AU_content"],
             mut_exon=mut_exon,
+            cdsseqs_UC_content=cds_comp["cdsseqs_UC_content"],
             phastcons_new3utr_first200_median=phc_new3,
-            phylop_ptc_to_ejc_median=phy_p2e,
-            AmountExonsAfter=n_after,
+            MedianExpression_log2=expr,
         )
 
     def _nan_result(self, variant_id, txname, gene, **kw) -> AnnotationResult:
@@ -250,13 +247,14 @@ class FeatureAnnotator:
             ptc_transcript_pos=None, transcript_length=None, cds_length=None,
             downstream_new3utr_len=None,
             boundary_ambiguous=False, tx_not_in_gtf=False, version_mismatch=False,
-            new3utr_empty=False, ptc_to_ejc_empty=False,
-            half_life_missing=True, any_conservation_missing=True,
+            new3utr_empty=False,
+            half_life_missing=True, expression_missing=True,
+            any_conservation_missing=True,
             last_EJC=None, relativePTClocation=None, half_life_PC1=None,
             cdsseqs_AU_content=None, mut_exon=None,
+            cdsseqs_UC_content=None,
             phastcons_new3utr_first200_median=None,
-            phylop_ptc_to_ejc_median=None,
-            AmountExonsAfter=None,
+            MedianExpression_log2=None,
         )
         base.update(kw)
         return AnnotationResult(**base)
