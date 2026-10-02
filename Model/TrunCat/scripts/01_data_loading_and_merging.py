@@ -48,6 +48,7 @@ def load_config(config_path=None):
 
     # Resolve all data and output paths relative to repo root
     BASE_DIR = config_path.parent.parent
+    config['_config_dir'] = str(config_path.parent)
     for key, val in config['data'].items():
         config['data'][key] = str(BASE_DIR / val)
     for key, val in config['output'].items():
@@ -473,6 +474,30 @@ def verify_results(df_result, original_shape):
         print("  No missing data!")
 
 
+def enforce_canonical_column_order(df_result, order_file):
+    """Reorder the merged table to the canonical column order.
+
+    Appending the five annotation merges puts the columns in a different order from the table the
+    model was trained on, and column order changes CatBoost results slightly (about 0.002 OOF AUC).
+    feature_column_order.txt is the header of the merged table that all reported results come from.
+    """
+    print("\n" + "=" * 80)
+    print("CANONICAL COLUMN ORDER")
+    print("=" * 80)
+    order_file = Path(order_file)
+    canonical_order = [line.rstrip("\n") for line in open(order_file) if line.strip()]
+
+    missing_cols = [c for c in canonical_order if c not in df_result.columns]
+    extra_cols = [c for c in df_result.columns if c not in canonical_order]
+    assert not missing_cols and not extra_cols, (
+        f"Merged columns differ from {order_file.name}: missing {missing_cols[:5]}, extra {extra_cols[:5]}. "
+        "If you intentionally changed the feature set, regenerate the order file (and rerun scripts 02 and 03)."
+    )
+    df_result = df_result[canonical_order]
+    print(f"✓ Columns reordered to {order_file.name} ({len(canonical_order)} columns)")
+    return df_result
+
+
 def save_output(df_result, output_path):
     print("\n" + "=" * 80)
     print("SAVING MERGED DATASET")
@@ -546,6 +571,11 @@ def main():
 
         # Verify
         verify_results(df_result, original_shape)
+
+        # Enforce the canonical column order (results depend on it at the ~0.002 AUC level)
+        df_result = enforce_canonical_column_order(
+            df_result, Path(config['_config_dir']) / "feature_column_order.txt"
+        )
 
         # Save
         save_output(df_result, config['data']['merged'])

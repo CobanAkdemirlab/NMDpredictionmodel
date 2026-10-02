@@ -128,7 +128,7 @@ def check_dependencies():
         ("numpy",       "numpy",        ">=1.24.0"),
         ("yaml",        "pyyaml",       ">=6.0"),
         ("catboost",    "catboost",     ">=1.2.8"),
-        ("sklearn",     "scikit-learn", ">=1.3.0"),
+        ("sklearn",     "scikit-learn", ">=1.3.0,<1.8"),
         ("matplotlib",  "matplotlib",   ">=3.7.0"),
         ("seaborn",     "seaborn",      ">=0.12.0"),
         ("shap",        "shap",         ">=0.43.0"),
@@ -146,6 +146,16 @@ def check_dependencies():
         except ImportError:
             print(f"  ✗ {package_name:<20} MISSING  (required {version_req})")
             missing.append(package_name)
+
+    # scikit-learn 1.8 changed StratifiedGroupKFold splits; the reported CV numbers were produced with 1.3-1.7
+    try:
+        import sklearn
+        major, minor = (int(x) for x in sklearn.__version__.split(".")[:2])
+        if (major, minor) >= (1, 8):
+            print(f"\n  ⚠️  scikit-learn {sklearn.__version__} creates different gene-grouped CV folds than the "
+                  "reported results (tested with 1.3-1.7). Install scikit-learn<1.8 to reproduce them.")
+    except Exception:
+        pass
 
     if missing:
         print(f"\n  ⚠️  Missing: {', '.join(missing)}")
