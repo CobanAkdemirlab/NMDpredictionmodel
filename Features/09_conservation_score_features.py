@@ -6,14 +6,27 @@ Optional version-free mode using tx_nover or by stripping ENST versions.
 
 Regions computed (per variant):
 - ptc_100bp (±100 bp around PTC)
-- ptc_to_ejc  (PTC -> downstream exon junction within same exon; strand-aware)
-- ejc_100bp   (±100 bp around that downstream exon junction)
+- ptc_to_ejc  (PTC -> next boundary in the PTC's exon: the downstream exon
+               junction, or the end of the CDS if the CDS ends first; strand-aware)
+- ejc_100bp   (±100 bp around the downstream exon junction; only when the PTC's
+               exon is not the last exon, i.e. a junction exists)
+
+FIX (2026-09): for PTCs in the last exon there is no downstream junction; the
+previous code used the transcript 3' end instead, so ptc_to_ejc covered the
+3'UTR and ejc_100bp was centred on the transcript end. Now ptc_to_ejc stops at
+the CDS end (coding sequence, like for every other PTC) and ejc_100bp is NA.
+
+Command line (overrides the CONFIG paths below):
+  python 09_conservation_score_features.py --variants V.csv --gtf G.gtf.gz \
+      --phastcons hg38.phastCons100way.bw --phylop hg38.phyloP100way.bw \
+      --outdir OUT [--regions ptc_to_ejc,ejc_100bp]
 - old3utr_first200, old3utr_whole (canonical 3' UTR from CDS end)
 - new3utr_first200, new3utr_whole (from PTC to end of transcript)
 - utr5_first200, utr5_whole
 - tx_whole    (spliced exonic: 5'UTR + CDS + 3'UTR)
 """
 
+import re
 import pandas as pd
 import numpy as np
 import sys
@@ -197,14 +210,15 @@ def _appris_rank(tags: set):
 def _is_mane(tags: set):
     return "MANE_Select" in tags or "MANE_Plus_Clinical" in tags
 
-def _tsl_rank(tsl_text: str):
-    if tsl_text is None:
+def _tsl_rank(tsl_text):
+    # FIX (2026-09): recent pandas passes a missing attribute as float NaN
+    # (not None), which crashed on .strip(). Also accept values such as
+    # "1 (assigned to previous version 5)" by taking the leading number.
+    if tsl_text is None or (isinstance(tsl_text, float) and np.isnan(tsl_text)) or pd.isna(tsl_text):
         return 99
-    t = tsl_text.strip().upper().replace("TSL", "")
-    try:
-        return int(t)
-    except ValueError:
-        return 99
+    t = str(tsl_text).strip().upper().replace("TSL", "").strip()
+    m = re.match(r"(\d+)", t)
+    return int(m.group(1)) if m else 99
 
 def load_gtf_model_and_meta(gtf_path: str):
     print("\n[•] Reading GTF (exons + CDS + transcript-level metadata) …")
@@ -331,7 +345,9 @@ def pick_canonical(tx_list, tx_meta):
 # =========================
 
 class RegionBuilder:
-    def __init__(self, df, exons_by_tx, cds_bounds, tx_meta):
+    def __init__(self, df, exons_by_tx, cds_bounds, tx_meta, regions=None):
+        # regions: None = all; otherwise a set of region names/prefixes to build
+        self.region_filter = set(regions) if regions else None
         self.df = df
         self.exons_by_tx = exons_by_tx
         self.cds_bounds = cds_bounds
@@ -339,6 +355,9 @@ class RegionBuilder:
         self.regions = []
         self.canon_stats = {"single_tx":0,"multi_tx":0,"no_tx":0}
         self.canon_reason_counts = {}
+
+    def want(self, region):
+        return self.region_filter is None or region in self.region_filter
 
     @staticmethod
     def norm_chr(chrom):
@@ -430,6 +449,13 @@ class RegionBuilder:
         hit = ex[(ex["chrom"] == chrom) & (ex["start"] <= ptc) & (ptc <= ex["end"])]
         if hit.empty: return None
         idx = hit.index[0]
+        # FIX (2026-09): exons are sorted by genomic start, so the transcript's
+        # last exon is the highest index on + and index 0 on -. A PTC in the
+        # last exon has no downstream junction (previously the transcript end
+        # was returned instead).
+        is_last_exon = (idx == ex.index[-1]) if strand == "+" else (idx == ex.index[0])
+        if is_last_exon:
+            return None
         return int(ex.loc[idx, "end"] if strand == "+" else ex.loc[idx, "start"])
 
     def pick_variant_txlist(self, row):
@@ -479,15 +505,30 @@ class RegionBuilder:
             base = f"var{i}"
 
             # 1) PTC ±100
-            self.add_bed(chrom, ptc - 100, ptc + 100, f"{base}_ptc_100bp", strand)
-            types_counter["ptc_100bp"] = types_counter.get("ptc_100bp", 0) + 1
+            if self.want("ptc_100bp"):
+                self.add_bed(chrom, ptc - 100, ptc + 100, f"{base}_ptc_100bp", strand)
+                types_counter["ptc_100bp"] = types_counter.get("ptc_100bp", 0) + 1
 
             if tx and tx in self.exons_by_tx:
                 ex = self.exons_by_tx[tx]
                 curr = ex[(ex["chrom"] == chrom) & (ex["start"] <= ptc) & (ptc <= ex["end"])]
 
-                if not curr.empty:
+                if not curr.empty and self.want("ptc_to_ejc"):
                     s = int(curr.iloc[0]["start"]); e = int(curr.iloc[0]["end"])
+                    # FIX (2026-09): stop at the CDS end when it lies in the
+                    # PTC's exon (always the case for last-exon PTCs), so the
+                    # region is coding sequence for every PTC instead of
+                    # running through the 3'UTR to the transcript end.
+                    cds = self.cds_bounds.get(tx)
+                    if cds:
+                        if strand == "+":
+                            cds_last = int(cds["cds_end"])
+                            if ptc <= cds_last < e:
+                                e = cds_last
+                        else:
+                            cds_last = int(cds["cds_start"])
+                            if s < cds_last <= ptc:
+                                s = cds_last
                     if strand == "+" and e > ptc:
                         self.add_bed(chrom, ptc, e, f"{base}_ptc_to_ejc", strand)
                         types_counter["ptc_to_ejc"] = types_counter.get("ptc_to_ejc", 0) + 1
@@ -495,12 +536,12 @@ class RegionBuilder:
                         self.add_bed(chrom, s, ptc, f"{base}_ptc_to_ejc", strand)
                         types_counter["ptc_to_ejc"] = types_counter.get("ptc_to_ejc", 0) + 1
 
-                ejc = self.downstream_junction_site(tx, chrom, ptc)
+                ejc = self.downstream_junction_site(tx, chrom, ptc) if self.want("ejc_100bp") else None
                 if ejc is not None:
                     self.add_bed(chrom, ejc - 100, ejc + 100, f"{base}_ejc_100bp", strand)
                     types_counter["ejc_100bp"] = types_counter.get("ejc_100bp", 0) + 1
 
-                old3 = self.utr_blocks(tx, "3p")
+                old3 = self.utr_blocks(tx, "3p") if self.want("old3utr") else []
                 if old3:
                     for ch, s, e in old3: self.add_bed(ch, s, e, f"{base}_old3utr_whole", strand)
                     types_counter["old3utr_whole"] = types_counter.get("old3utr_whole", 0) + 1
@@ -508,7 +549,7 @@ class RegionBuilder:
                         self.add_bed(ch, s, e, f"{base}_old3utr_first200", strand)
                     types_counter["old3utr_first200"] = types_counter.get("old3utr_first200", 0) + 1
 
-                new3 = self.new3utr_blocks(tx, chrom, ptc)
+                new3 = self.new3utr_blocks(tx, chrom, ptc) if self.want("new3utr") else []
                 if new3:
                     for ch, s, e in new3: self.add_bed(ch, s, e, f"{base}_new3utr_whole", strand)
                     types_counter["new3utr_whole"] = types_counter.get("new3utr_whole", 0) + 1
@@ -516,7 +557,7 @@ class RegionBuilder:
                         self.add_bed(ch, s, e, f"{base}_new3utr_first200", strand)
                     types_counter["new3utr_first200"] = types_counter.get("new3utr_first200", 0) + 1
 
-                utr5 = self.utr_blocks(tx, "5p")
+                utr5 = self.utr_blocks(tx, "5p") if self.want("utr5") else []
                 if utr5:
                     for ch, s, e in utr5: self.add_bed(ch, s, e, f"{base}_utr5_whole", strand)
                     types_counter["utr5_whole"] = types_counter.get("utr5_whole", 0) + 1
@@ -524,7 +565,7 @@ class RegionBuilder:
                         self.add_bed(ch, s, e, f"{base}_utr5_first200", strand)
                     types_counter["utr5_first200"] = types_counter.get("utr5_first200", 0) + 1
 
-                tx_blocks = self.transcript_blocks(tx)
+                tx_blocks = self.transcript_blocks(tx) if self.want("tx_whole") else []
                 if tx_blocks:
                     for ch, s, e in tx_blocks: self.add_bed(ch, s, e, f"{base}_tx_whole", strand)
                     types_counter["tx_whole"] = types_counter.get("tx_whole", 0) + 1
@@ -645,6 +686,28 @@ def merge_medians(variant_csv: str, phastcons_median_tsv: str, phylop_median_tsv
 # =========================
 
 def main():
+    global VARIANT_FILE, PHASTCONS_BW, PHYLOP_BW, GTF_FILE, OUTPUT_DIR
+    global BED_FILE, PHASTCONS_MEDIAN, PHYLOP_MEDIAN, FINAL_OUTPUT
+    import argparse
+    ap = argparse.ArgumentParser(description="Median PhastCons/PhyloP per region for PTC variants")
+    ap.add_argument("--variants"); ap.add_argument("--gtf")
+    ap.add_argument("--phastcons"); ap.add_argument("--phylop"); ap.add_argument("--outdir")
+    ap.add_argument("--regions", default=None,
+                    help="Comma-separated subset to build, e.g. ptc_to_ejc,ejc_100bp "
+                         "(choices: ptc_100bp, ptc_to_ejc, ejc_100bp, old3utr, new3utr, utr5, tx_whole)")
+    a = ap.parse_args()
+    VARIANT_FILE = a.variants or VARIANT_FILE
+    GTF_FILE     = a.gtf or GTF_FILE
+    PHASTCONS_BW = a.phastcons or PHASTCONS_BW
+    PHYLOP_BW    = a.phylop or PHYLOP_BW
+    if a.outdir:
+        OUTPUT_DIR       = a.outdir
+        BED_FILE         = f"{OUTPUT_DIR}/conservation_regions.bed"
+        PHASTCONS_MEDIAN = f"{OUTPUT_DIR}/phastcons_medians.tsv"
+        PHYLOP_MEDIAN    = f"{OUTPUT_DIR}/phylop_medians.tsv"
+        FINAL_OUTPUT     = f"{OUTPUT_DIR}/variants_with_conservation_medians.csv"
+    regions = [r.strip() for r in a.regions.split(",")] if a.regions else None
+
     print("="*80)
     print("Median Conservation for Stop-Gain Variants (PhastCons & PhyloP)")
     print("="*80)
@@ -660,7 +723,7 @@ def main():
 
     exons_by_tx, cds_bounds, _tx_strand_unused, tx_meta = load_gtf_model_and_meta(GTF_FILE)
 
-    rb = RegionBuilder(variants, exons_by_tx, cds_bounds, tx_meta)
+    rb = RegionBuilder(variants, exons_by_tx, cds_bounds, tx_meta, regions)
     rb.build()
     bed_df = rb.to_bed(BED_FILE)
 

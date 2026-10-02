@@ -173,11 +173,16 @@ def genomic_pos_to_cds_offset_nt(pos_1based: int, df_cds_tx: pd.DataFrame):
 def fetch_spliced_cds_seq(genome: Fasta, df_cds_tx: pd.DataFrame):
     strand = df_cds_tx["Strand"].iloc[0]
     chunks = []
+    # FIX (2026-09): segments are already in coding (5'->3') order, so on the
+    # minus strand each segment must be reverse-complemented on its own.
+    # The previous code joined the segments in coding order and then
+    # reverse-complemented the whole string, which reversed the segment
+    # order again: for multi-exon minus-strand CDSs the sequence was
+    # scrambled (did not start with ATG, codons read across wrong junctions).
     for chrom, s0, e0 in cds_segments_in_coding_order(df_cds_tx):
-        chunks.append(genome[chrom][s0:e0].seq.upper())
+        chunk = genome[chrom][s0:e0].seq.upper()
+        chunks.append(revcomp(chunk) if strand == "-" else chunk)
     seq = "".join(chunks)
-    if strand == "-":
-        seq = revcomp(seq)
     seq = seq[: (len(seq)//3)*3]  # full codons only
     return seq
 

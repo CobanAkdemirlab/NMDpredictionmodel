@@ -287,7 +287,7 @@ PTC sequence context is evaluated using the readthrough scoring procedure implem
 The TOPMed model-development dataset produces the feature matrix used for machine-learning analysis:
 
 ```text
-5,749 variants × 853 features
+5,749 variants × 619 features
 ```
 
 The same feature definitions are used when constructing matrices for gnomAD, ClinVar, and GREGoR.

@@ -1,1 +1,5 @@
-config/config.local.yaml # if not already ignored
+# Local configs (paths on your machine)
+config/config.local.yaml
+
+# Run outputs
+outputs/

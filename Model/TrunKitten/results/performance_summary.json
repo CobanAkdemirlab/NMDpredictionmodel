@@ -7,37 +7,37 @@
     "half_life_PC1",
     "cdsseqs_AU_content",
     "mut.exon",
-    "phylop_ptc_to_ejc_median",
-    "AmountExonsAfter",
-    "phastcons_new3utr_first200_median"
+    "cdsseqs_UC_content",
+    "phastcons_new3utr_first200_median",
+    "MedianExpression_log2"
   ],
   "n_samples": 5749,
   "escape_rate": 0.45538354496434164,
-  "cv_oof_auc": 0.7741395649459226,
-  "cv_oof_pr_auc": 0.7205996127361851,
-  "cv_mean_fold_auc": 0.7757226934449509,
-  "cv_std_fold_auc": 0.016945079639362325,
+  "cv_oof_auc": 0.7753773412038953,
+  "cv_oof_pr_auc": 0.7272724237174824,
+  "cv_mean_fold_auc": 0.7768554509807751,
+  "cv_std_fold_auc": 0.01789624745184177,
   "cv_fold_aucs": [
-    0.7720378141420041,
-    0.7675500370111148,
-    0.8092087872337465,
-    0.7651231611560475,
-    0.7646936676818414
+    0.773839799632439,
+    0.7712972323750766,
+    0.8116121986170819,
+    0.7614632112955868,
+    0.7660648129836913
   ],
-  "youden_threshold": 0.4552588976465164,
-  "precision_at_threshold": 0.696812749003984,
-  "recall_at_threshold": 0.6680672268907563,
-  "f1_at_threshold": 0.6821372854914196,
+  "youden_threshold": 0.4313564920894303,
+  "precision_at_threshold": 0.6841317365269461,
+  "recall_at_threshold": 0.6982429335370511,
+  "f1_at_threshold": 0.6911153119092628,
   "confusion_matrix": [
     [
-      2370,
-      761
+      2287,
+      844
     ],
     [
-      869,
-      1749
+      790,
+      1828
     ]
   ],
-  "full_model_oof_auc": 0.776,
-  "delta_vs_full": -0.0018604350540774028
+  "full_model_oof_auc": 0.7773,
+  "delta_vs_full": -0.0019226587961046482
 }

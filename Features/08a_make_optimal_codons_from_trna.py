@@ -75,12 +75,43 @@ def main():
                          "top_quantile: pick codons in top quantile by tRNA copies (global).")
     ap.add_argument("--quantile", type=float, default=0.80, help="Quantile for top_quantile mode (default 0.80)")
     ap.add_argument("--out", required=True, help="Output optimal_codons.txt")
+    # FIX (2026-09): filters so that only bona fide nuclear tRNA genes are counted
+    ap.add_argument("--min_score", type=float, default=50.0,
+                    help="Minimum tRNAscan-SE score (column trnaScore); lower-scoring "
+                         "entries are mostly pseudogenes (default 50)")
+    ap.add_argument("--no_filter", action="store_true",
+                    help="Count every row as the original script did (for comparison only)")
     args = ap.parse_args()
 
     df = pd.read_csv(args.trna_tsv, sep="\t")
     for col in (args.aa_col, args.ac_col):
         if col not in df.columns:
             raise SystemExit(f"Missing column '{col}' in {args.trna_tsv}. Columns: {list(df.columns)}")
+
+    n_all = len(df)
+    if not args.no_filter:
+        # FIX (2026-09): the original counted all rows of the UCSC tRNA table,
+        # including entries that are not functional nuclear tRNA genes. That put
+        # TAA/TAG/TGA (Sup/SeC tRNAs) in the optimal list and changed the
+        # Leu, Arg and Glu choices. Excluded here:
+        #   - nuclear-mitochondrial tRNA-like sequences (names nm-/nmt-)
+        #   - Undet (no amino acid), Sup (stop-codon suppressor), SeC
+        #   - low tRNAscan-SE score (< --min_score), mostly pseudogenes
+        #   - non-primary contigs (_random, _alt, chrUn_...)
+        #   - anticodons that are not 3 plain nucleotides
+        keep = pd.Series(True, index=df.index)
+        if "name" in df.columns:
+            keep &= ~df["name"].astype(str).str.match(r"^(nm|nmt)-")
+        keep &= ~df[args.aa_col].astype(str).isin(["Undet", "Sup", "SeC"])
+        if "trnaScore" in df.columns:
+            keep &= pd.to_numeric(df["trnaScore"], errors="coerce") >= args.min_score
+        else:
+            print("[!] No trnaScore column; score filter not applied")
+        if "chrom" in df.columns:
+            keep &= df["chrom"].astype(str).str.match(r"^chr([0-9]+|X|Y)$")
+        keep &= df[args.ac_col].astype(str).str.upper().str.match(r"^[ACGTU]{3}$")
+        df = df[keep]
+        print(f"[*] tRNA rows kept after filtering: {len(df)} / {n_all}")
 
     df = df[[args.aa_col, args.ac_col]].dropna().copy()
     df[args.ac_col] = df[args.ac_col].astype(str).str.upper().str.replace("U","T")

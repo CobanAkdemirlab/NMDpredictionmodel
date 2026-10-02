@@ -1,19 +1,25 @@
 """Validate the TrunKitten annotation pipeline against the TrunCat training features.
 
-Loads the first N rows of TOPMed_merged.csv (or any cleaned/merged CSV),
-runs the TrunKitten annotation pipeline on those variants, and compares the
-8 features column-by-column against the values produced by the TrunCat
-training-time feature generation.
+Loads N rows of TOPMed_merged.csv (the corrected merged table; the first N rows,
+or a reproducible random sample with --sample-seed), runs the TrunKitten
+annotation pipeline on those variants, and compares the 8 features column by
+column against the values produced by the TrunCat training-time feature
+generation.
 
 Usage:
     python scripts/validate_against_training.py \
-        --merged    /path/to/TOPMed_merged.csv \
-        --config    config/config.yaml \
-        --n         8 \
-        --out       outputs/validation_report.tsv
+        --merged       /path/to/TOPMed_merged.csv \
+        --config       config/config.yaml \
+        --n            300 \
+        --sample-seed  42 \
+        --out          outputs/validation_report.tsv
 
-Requires the same inputs as a normal TrunKitten run (GTF, FASTA, BigWigs,
-half-life). The underlying implementation package is `minicat`.
+A random sample (rather than the first rows) covers both strands, last-exon and
+upstream PTCs, and genes absent from the half-life / GTEx tables.
+
+Requires the same inputs as a normal TrunKitten run (GTF, FASTA, phastCons
+BigWig, half-life table, GTEx median-TPM table). The underlying implementation
+package is `minicat`.
 """
 from __future__ import annotations
 import argparse
@@ -30,6 +36,7 @@ from minicat.config import PipelineConfig
 from minicat.gtf_index import build_transcript_index, strip_version
 from minicat.conservation import ConservationSource
 from minicat.halflife import HalfLifeTable
+from minicat.expression import GTExExpressionTable
 from minicat.features import FeatureAnnotator
 
 
@@ -42,13 +49,17 @@ MINICAT_TO_TRAINING = {
     "half_life_PC1": "half_life_PC1",
     "cdsseqs_AU_content": "cdsseqs_AU_content",
     "mut.exon": "mut.exon",
+    "cdsseqs_UC_content": "cdsseqs_UC_content",
     "phastcons_new3utr_first200_median": "phastcons_new3utr_first200_median",
-    "phylop_ptc_to_ejc_median": "phylop_ptc_to_ejc_median",
-    "AmountExonsAfter": "AmountExonsAfter",
+    "MedianExpression_log2": "MedianExpression_log2",
 }
 
+# The mapping must cover exactly TrunKitten's features
+assert list(MINICAT_TO_TRAINING) == list(REQUIRED_FEATURES), \
+    "validation mapping is out of sync with minicat.REQUIRED_FEATURES"
+
 CATEGORICAL = {"last.EJC"}
-INTEGER     = {"mut.exon", "AmountExonsAfter"}
+INTEGER     = {"mut.exon"}
 
 
 def _setup_logging():
@@ -123,6 +134,12 @@ def main(argv=None) -> int:
     ap.add_argument("--merged", required=True, help="TOPMed_merged.csv or equivalent")
     ap.add_argument("--config", required=True, help="TrunKitten config YAML")
     ap.add_argument("--n", type=int, default=10, help="number of variants to validate")
+    ap.add_argument("--sample-seed", type=int, default=None,
+                    help="if given, validate a reproducible random sample of N rows "
+                         "instead of the first N")
+    ap.add_argument("--min-match", type=float, default=None,
+                    help="if given, exit non-zero when any feature matches in a smaller "
+                         "fraction of variants (e.g. 0.98)")
     ap.add_argument("--out",    default="outputs/validation_report.tsv")
     ap.add_argument("--tol",    type=float, default=1e-3,
                     help="absolute tolerance for continuous features")
@@ -131,9 +148,16 @@ def main(argv=None) -> int:
     _setup_logging()
     log = logging.getLogger("validate")
 
-    # 1. Load first N rows of training merged CSV
-    log.info(f"Loading {args.n} rows from {args.merged}")
-    truth_df = pd.read_csv(args.merged, nrows=args.n)
+    # 1. Load N rows of the training merged CSV (first N, or a seeded random sample)
+    if args.sample_seed is None:
+        log.info(f"Loading the first {args.n} rows from {args.merged}")
+        truth_df = pd.read_csv(args.merged, nrows=args.n, low_memory=False)
+    else:
+        log.info(f"Loading a random sample of {args.n} rows (seed {args.sample_seed}) from {args.merged}")
+        full = pd.read_csv(args.merged, low_memory=False)
+        truth_df = (full.sample(n=min(args.n, len(full)), random_state=args.sample_seed)
+                        .sort_index().reset_index(drop=True))
+        del full
 
     # Detect the variant_id column; training CSVs commonly use 'variantID' or a composite key
     if "variant_id" in truth_df.columns:
@@ -171,16 +195,17 @@ def main(argv=None) -> int:
 
     fasta     = Fasta(str(cfg.fasta), as_raw=False, sequence_always_upper=True)
     phastcons = ConservationSource(cfg.phastcons, chr_style=cfg.chr_style)
-    phylop    = ConservationSource(cfg.phylop,    chr_style=cfg.chr_style)
     hl        = HalfLifeTable(cfg.halflife, sheet=cfg.halflife_sheet,
                               ensg_col=cfg.halflife_ensg_col,
                               value_col=cfg.halflife_value_col,
                               symbol_col=cfg.halflife_symbol_col or None,
                               strip_versions=cfg.strip_versions)
+    expr      = GTExExpressionTable(cfg.gtex, strip_versions=cfg.strip_versions,
+                                    symbol_fallback=cfg.expression_symbol_fallback)
 
     annot = FeatureAnnotator(
         tx_index=tx_index, fasta=fasta,
-        phastcons=phastcons, phylop=phylop, halflife=hl,
+        phastcons=phastcons, halflife=hl, expression=expr,
         strip_versions=cfg.strip_versions,
         new3utr_window=cfg.new3utr_window,
     )
@@ -189,7 +214,7 @@ def main(argv=None) -> int:
                 for r in variants_df.to_dict(orient="records")]
     our_df = pd.DataFrame(our_rows)
 
-    phastcons.close(); phylop.close()
+    phastcons.close()
 
     # 4. Row-by-row comparison (aligned by positional index)
     rows = []
@@ -212,10 +237,12 @@ def main(argv=None) -> int:
     log.info("="*72)
     log.info(f"VALIDATION SUMMARY (n={len(report)})")
     log.info("="*72)
+    worst = 1.0
     for feat in MINICAT_TO_TRAINING.keys():
         match_col = f"{feat}__match"
         diff_col  = f"{feat}__abs_diff"
         n_match = int(report[match_col].sum())
+        worst = min(worst, n_match / len(report))
         pct = n_match / len(report) * 100
         line = f"  {feat:<40s}  {n_match}/{len(report)} match ({pct:.0f}%)"
         if diff_col in report.columns:
@@ -225,6 +252,9 @@ def main(argv=None) -> int:
         log.info(line)
 
     log.info(f"\nFull report: {args.out}")
+    if args.min_match is not None and worst < args.min_match:
+        log.error(f"Lowest per-feature match rate {worst:.3f} is below --min-match {args.min_match}")
+        return 1
     return 0
 
 

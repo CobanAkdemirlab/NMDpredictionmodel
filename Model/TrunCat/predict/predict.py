@@ -12,10 +12,10 @@ Design principles
 1. The trained model's `feature_names_` is the SOURCE OF TRUTH for which
    features to use and in what order. We never re-derive the feature list.
 2. We only apply DETERMINISTIC cleaning from notebook 02 (zero-fill UTR
-   structural absence, gnomAD zero-fill, categorical NaN -> 'MISSING',
-   loeuf_cat rename). Data-dependent imputations (median fills) use
-   precomputed training medians if available; otherwise CatBoost's native
-   NaN handling kicks in.
+   structural absence incl. utr3 motif columns, gnomAD zero-fill,
+   categorical NaN -> 'MISSING', loeuf_cat rename). Data-dependent
+   imputations (median fills) use precomputed training medians if available;
+   otherwise CatBoost's native NaN handling kicks in.
 3. Verification-first: we audit every column against the model's expectations
    BEFORE predicting, and fail loudly on mismatches.
 
@@ -23,8 +23,8 @@ Usage
 -----
     # Cohort CSV that already has all v4 features merged in:
     python predict.py \
-        --input  /Users/jschmidt3/Iman_visualizations/spooky_model_v4.1/predict/gnomAD_df_stopgain_updated2026_merged.csv \
-        --output /Users/jschmidt3/Iman_visualizations/spooky_model_v4.1/predict/gnomAD_predictions.csv \
+        --input  path/to/gnomAD_df_stopgain_updated2026_merged.csv \
+        --output path/to/gnomAD_predictions.csv \
         --label  gnomAD_2026
 
     # Cohort CSV that still needs v4 annotations merged in (point at the
@@ -84,7 +84,14 @@ UTR_ZERO_FILL = [
     "phylop_old3utr_first200_median",    "phylop_old3utr_whole_median",
     "phastcons_ptc_to_ejc_median",
     "phylop_ptc_to_ejc_median",
+    "phastcons_ejc_100bp_median",
+    "phylop_ejc_100bp_median",
 ]
+
+# utr3 motif columns: no annotated 3'UTR -> no motif scan -> 0 hits.
+# Notebook 02 zero-fills these before categorical conversion (the old training
+# file also coded these variants as 0). Matched by prefix, not by name.
+UTR3_MOTIF_PREFIXES = ("utr3_all.", "utr3_200.")
 
 # Median-imputed at training time (we load saved training medians for these)
 MEDIAN_IMPUTE_EXPLICIT = [
@@ -342,6 +349,14 @@ def clean_and_align(
                 X[col] = X[col].fillna(0)
                 audit.zero_filled_structural.append((col, int(n)))
 
+    # ── utr3 motif columns: no 3'UTR -> 0 hits (nb 02) ───────────────────────
+    for col in X.columns:
+        if isinstance(col, str) and col.startswith(UTR3_MOTIF_PREFIXES):
+            n = X[col].isna().sum()
+            if n > 0:
+                X[col] = X[col].fillna(0)
+                audit.zero_filled_structural.append((col, int(n)))
+
     # ── gnomAD zero-fill (nb 02) ─────────────────────────────────────────────
     if "gnomAD_exome_ALL" in X.columns:
         n = X["gnomAD_exome_ALL"].isna().sum()
@@ -372,6 +387,9 @@ def clean_and_align(
             n_missing = X[col].isna().sum()
             X[col] = X[col].astype(str)
             X[col] = X[col].replace({"nan": "MISSING", "None": "MISSING"})
+            # pandas >= 3 keeps NaN as a true missing value after astype(str),
+            # so the string replace above never fires; mirror nb 02's fallback.
+            X[col] = X[col].fillna("MISSING")
             if n_missing > 0:
                 audit.categorical_missing_filled.append((col, int(n_missing)))
 

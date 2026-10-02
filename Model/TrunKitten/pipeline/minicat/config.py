@@ -13,8 +13,8 @@ class PipelineConfig:
     gtf:        Path
     fasta:      Path
     phastcons:  Path
-    phylop:     Path
     halflife:   Path
+    gtex:       Path   # GTEx v8 median gene-level TPM by tissue (.gct / .gct.gz / .tsv)
     halflife_sheet: Any
     halflife_ensg_col:   str
     halflife_value_col:  str
@@ -29,6 +29,7 @@ class PipelineConfig:
     strip_versions:  bool = True
     n_workers:       int  = 4
     new3utr_window:  int  = 200
+    expression_symbol_fallback: bool = True   # gene-symbol fallback for GTEx ID drift
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "PipelineConfig":
@@ -39,6 +40,12 @@ class PipelineConfig:
         o = raw.get("options", {})
 
         def _pth(key: str) -> Path:
+            if key not in p:
+                raise KeyError(
+                    f"config 'paths' is missing '{key}'. "
+                    + ("TrunKitten now needs a GTEx v8 median-TPM table for MedianExpression_log2; "
+                       "add `gtex: inputs/gtex_gene_median_tpm.gct.gz` (see README)." if key == "gtex" else "")
+                )
             return Path(p[key]).expanduser()
 
         cfg = cls(
@@ -46,8 +53,8 @@ class PipelineConfig:
             gtf        = _pth("gtf"),
             fasta      = _pth("fasta"),
             phastcons  = _pth("phastcons"),
-            phylop     = _pth("phylop"),
             halflife   = _pth("halflife"),
+            gtex       = _pth("gtex"),
             halflife_sheet     = p.get("halflife_sheet", 0),
             halflife_ensg_col  = p.get("halflife_ensg_col", "gene_id"),
             halflife_value_col = p.get("halflife_value_col", "half_life_PC1"),
@@ -59,6 +66,7 @@ class PipelineConfig:
             strip_versions  = o.get("strip_versions", True),
             n_workers       = int(o.get("n_workers", 4)),
             new3utr_window  = int(o.get("new3utr_window", 200)),
+            expression_symbol_fallback = bool(o.get("expression_symbol_fallback", True)),
         )
         cfg._validate_inputs()
         cfg.out_features.parent.mkdir(parents=True, exist_ok=True)
@@ -67,7 +75,7 @@ class PipelineConfig:
 
     def _validate_inputs(self) -> None:
         missing = []
-        for attr in ("variants", "gtf", "fasta", "phastcons", "phylop", "halflife"):
+        for attr in ("variants", "gtf", "fasta", "phastcons", "halflife", "gtex"):
             pth = getattr(self, attr)
             if not pth.exists():
                 missing.append(f"{attr}={pth}")

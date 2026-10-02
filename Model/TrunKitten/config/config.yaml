@@ -6,7 +6,7 @@ data:
   cleaned: "../TrunCat/data/TOPMed_cleaned.csv"
 
 shap:
-  # Snapshot of the SHAP rankings that defined the top-8 selection
+  # Snapshot of the SHAP rankings that defined the candidate (top-10) set
   rankings: "inputs/shap_feature_importance_rankings.csv"
 
 gene_ids: "../TrunCat/data/TOPMed_gene_ids.csv"
@@ -27,7 +27,7 @@ model:
 
 features:
   categorical:
-    - last.EJC          # the one categorical feature in the top-8
+    - last.EJC          # the one categorical feature among the 8
 
 output:
   models_dir:  "model"

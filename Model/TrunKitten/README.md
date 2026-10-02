@@ -1,58 +1,69 @@
 # TrunKitten
 
-A reduced version of [TrunCat](../TrunCat/) using only the 8 most informative
-features (by mean |SHAP|). Designed for prediction on external cohorts where
-reproducing the full ~850-feature annotation pipeline is impractical.
+A reduced version of [TrunCat](../TrunCat/) that uses only 8 features. Designed for
+prediction on external cohorts where reproducing the full 619-feature annotation
+pipeline is impractical.
 
 ## Layout
 
-- `config/config.yaml` — paths, hyperparameters, feature lists
-- `notebooks/04_reduced_model_top10_shap.ipynb` — training and evaluation of the reduced model
-- `inputs/shap_feature_importance_rankings.csv` — snapshot of TrunCat's SHAP rankings used to define the top-8 selection
+- `config/config.yaml` — paths, CatBoost hyperparameters (TrunKitten's own), feature lists
+- `notebooks/04_reduced_model_top10_shap.ipynb` — selection of the feature set, training and evaluation of the reduced model
+- `inputs/` — SHAP-rankings snapshot, half-life table, example variants, and download instructions for the large reference files (`inputs/README.md`)
 - `model/` — trained model artifacts
   - `trunkitten.cbm`, `trunkitten.pkl`
   - `trunkitten_features.json` — feature order, categorical specification, Youden threshold
+- `results/` — cross-validated predictions and performance summary
 - `pipeline/` — standalone annotation + prediction pipeline for scoring new variants
 
-## Top 8 features
+## The 8 features
 
-`last.EJC`, `relativePTClocation`, `half_life_PC1`, `cdsseqs_AU_content`,
-`mut.exon`, `phastcons_new3utr_first200_median`, `phylop_ptc_to_ejc_median`,
-`AmountExonsAfter`.
+`last.EJC`, `relativePTClocation`, `half_life_PC1`, `cdsseqs_AU_content`, `mut.exon`,
+`cdsseqs_UC_content`, `phastcons_new3utr_first200_median`, `MedianExpression_log2`.
+
+**How they were chosen.** The candidates are TrunCat's top 10 features by mean |SHAP|.
+A candidate is kept only if it also appears in the top 10 of all five
+leave-one-fold-out SHAP rankings (the table is
+`../TrunCat/results/lofo_stability/lofo_feature_stability_table.csv`). Eight features
+meet that rule. The feature order above is the model's column order and is fixed in
+`trunkitten_features.json`.
 
 ## Scoring new variants
 
 The `pipeline/` subdirectory contains a standalone annotation and prediction
-workflow: annotate a variant TSV with the 8 features TrunKitten requires,
-then score with the trained model.
+workflow: annotate a variant TSV with the 8 features TrunKitten requires, then score
+with the trained model.
 
 ```bash
 cd pipeline/
 
-# Annotate variants (produces annotated.tsv)
-python -m minicat.cli --input inputs/your_variants.tsv --out outputs/annotated.tsv
+# Annotate variants (paths and reference files are set in config/config.yaml)
+python -m minicat.cli --config config/config.yaml
 
 # Score with TrunKitten
 python predict.py \
     --annotated outputs/annotated.tsv \
     --model     ../model/trunkitten.pkl \
     --metadata  ../model/trunkitten_features.json \
-    --out       outputs/predictions.tsv
+    --out       outputs/predictions.tsv \
+    --training-medians ../../TrunCat/predict/training_medians.json
 ```
 
-See [`pipeline/README.md`](pipeline/README.md) for full usage, input TSV format,
-optional training-medians imputation, and example outputs.
+Besides a GTF, genome FASTA, a phastCons BigWig and the mRNA half-life table, the
+annotation step needs the GTEx v8 median-TPM table for `MedianExpression_log2`.
+See [`pipeline/README.md`](pipeline/README.md) for inputs, the optional
+training-medians imputation, and validation against the training features.
 
 ## Relationship to TrunCat
 
 TrunKitten is trained on the same TOPMed variant set as TrunCat
-(`../TrunCat/data/TOPMed_cleaned.csv`), restricted to the top 8 features by
-SHAP importance from TrunCat's CV-averaged ranking. Hyperparameters match
-TrunCat's current configuration.
+(`../TrunCat/data/TOPMed_cleaned.csv`) with gene-grouped 5-fold cross-validation and
+a fixed number of trees (no early stopping). It uses its own tuned CatBoost
+hyperparameters (`config/config.yaml`).
 
-Despite using only ~0.9% of the features, TrunKitten retains 99.7% of TrunCat's
-out-of-fold ROC-AUC (0.7733 vs. 0.7760 on the full 853-feature model).
-This makes TrunKitten suitable for scoring external cohorts where reproducing
-the full annotation pipeline is impractical.
+With 8 of TrunCat's 619 features, TrunKitten reaches an out-of-fold ROC-AUC of 0.7754,
+against 0.7773 for the full model (99.8% retained; paired gene-clustered bootstrap
+difference −0.0019, 95% CI −0.0072 to +0.0033). This makes TrunKitten suitable for
+scoring external cohorts where reproducing the full annotation pipeline is
+impractical.
 
 For the full model and feature engineering pipeline, see [`../TrunCat/`](../TrunCat/).
