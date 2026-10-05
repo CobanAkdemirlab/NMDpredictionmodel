@@ -1,22 +1,33 @@
+
 #!/usr/bin/env python3
 """
-fix_intron_flags.py
+01b_GENCODEv26_intron_features.py
 
-Recompute the three transcript-level intron flags from the GENCODE GTF and
-replace them in the feature table (they were wrong in the existing table):
+Generate transcript-level CDS and UTR intron features from
+GENCODE v26 exon and CDS annotations.
 
-  cdsseq.introns    "There is a cdsseq intron"  if the CDS (incl. stop codon) spans >1 exon
-  threeUTR.introns  "There is a 3UTR intron"    if the 3'UTR spans >1 exon
-  fiveUTR.introns   "There is a 5UTR intron"    if the 5'UTR spans >1 exon
-  otherwise NA (as in the existing table)
+Features:
+    cdsseq.introns
+    threeUTR.introns
+    fiveUTR.introns
 
-The transcript is the table's `txnames`. The table is edited as text: only these
-three fields change; everything else is copied byte-for-byte. The original
-file is not modified.
+Definitions:
+    cdsseq.introns
+        TRUE when the CDS, including the stop codon, spans >1 exon.
 
-Usage:
-  python fix_intron_flags.py --table TABLE.csv \
-      --gtf gencode.v26.primary_assembly.annotation.gtf.gz --output TABLE_INTRONfixed.csv
+    threeUTR.introns
+        TRUE when the annotated 3'UTR spans >1 exon.
+
+    fiveUTR.introns
+        TRUE when the annotated 5'UTR spans >1 exon.
+
+Transcript strand is used to distinguish the 5' and 3' sides
+of the CDS.
+
+Reference:
+    GENCODE v26 primary assembly
+    GRCh38 / hg38
+
 """
 import argparse, gzip, re
 from collections import Counter
