@@ -135,6 +135,8 @@ OUTPUT_DIR = (
 EXPECTED_FIMO_VERSION = "5.5.5"
 FIMO_THRESHOLD = 1e-4
 FIMO_TIMEOUT = 7200
+FIMO_MAX_STORED_SCORES = 1000000
+
 
 # Parallel FIMO jobs
 N_CORES = 6
@@ -301,6 +303,9 @@ def run_fimo_batch(args):
 
     cmd = [
         "fimo",
+        "--norc",
+        "--max-stored-scores",
+        str(FIMO_MAX_STORED_SCORES),
         "--thresh",
         str(FIMO_THRESHOLD),
         "--oc",
