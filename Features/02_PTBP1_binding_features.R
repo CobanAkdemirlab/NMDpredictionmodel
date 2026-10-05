@@ -41,6 +41,16 @@ library(GenomicRanges)
 # ------------------------------------------------------------------------------
 # 2. Configuration
 # ------------------------------------------------------------------------------
+# Paths can either be edited below or supplied on the command line:
+#
+# Rscript 02_PTBP1_binding_features.R \
+#   <GENCODE_GTF> \
+#   <OUTPUT_RDS> \
+#   <PTBP1_BED1> [<PTBP1_BED2> ...]
+
+args <- commandArgs(
+    trailingOnly = TRUE
+)
 
 CONFIG <- list(
 
@@ -54,8 +64,12 @@ CONFIG <- list(
     ),
 
     output_file =
+    if (length(args) >= 2) {
+        aegs [2]
+    } else {
         "/path/to/PTBP1_3UTR_features.rds",
-
+    },
+    
     # Region of the 3'UTR evaluated in the original analysis
     proximal_3utr_width = 400,
 
@@ -98,18 +112,148 @@ message(
 # 5. Define proximal 3'UTR region
 # ------------------------------------------------------------------------------
 
-# Reproduce the original analysis by examining the first 400 nt
-# of the annotated 3'UTR.
+# Define the proximal 3'UTR as the first 400 nt of the
+# spliced 3'UTR in transcript 5' -> 3' orientation.
 #
-# resize(..., fix = "start") respects the strand orientation of the
-# GRanges object and extends from the transcript-oriented start.
+# For transcripts with a 3'UTR shorter than 400 nt, the full
+# annotated 3'UTR is retained and is not extended beyond its
+# annotated boundary.
+#
+# For spliced 3'UTRs, the 400 nt are counted cumulatively across
+# exonic UTR segments so that intronic sequence is not included.
 
-threeutr_proximal <- resize(
+first_n_of_spliced <- function(
+    grl,
+    n
+) {
+
+    gr <- unlist(
+        grl,
+        use.names = TRUE
+    )
+
+
+    gr$tx <- names(
+        gr
+    )
+
+
+    minus <-
+        as.character(
+            strand(
+                gr
+            )
+        ) == "-"
+
+
+    # Order each transcript's UTR segments in transcript
+    # 5' -> 3' orientation.
+    ord <- order(
+        gr$tx,
+        ifelse(
+            minus,
+            -start(gr),
+            start(gr)
+        )
+    )
+
+
+    gr <- gr[
+        ord
+    ]
+
+
+    w <- width(
+        gr
+    )
+
+
+    # Number of UTR nucleotides preceding each segment
+    # within the same transcript.
+    before <- ave(
+        w,
+        gr$tx,
+        FUN = function(x) {
+            cumsum(x) - x
+        }
+    )
+
+
+    # Number of nucleotides to retain from each segment.
+    keep <- pmax(
+        0L,
+        pmin(
+            w,
+            n - before
+        )
+    )
+
+
+    gr <- gr[
+        keep > 0
+    ]
+
+
+    keep <- keep[
+        keep > 0
+    ]
+
+
+    # Keep the transcript-oriented start of each UTR segment.
+    gr <- resize(
+        gr,
+        width = keep,
+        fix = "start"
+    )
+
+
+    tx <- gr$tx
+
+
+    mcols(gr) <- NULL
+    names(gr) <- NULL
+
+
+    split(
+        gr,
+        factor(
+            tx,
+            levels =
+                unique(
+                    names(
+                        grl
+                    )
+                )
+        )
+    )
+}
+
+
+threeutr_proximal <- first_n_of_spliced(
     threeutr_gr,
-    width = CONFIG$proximal_3utr_width,
-    fix = "start"
+    CONFIG$proximal_3utr_width
 )
 
+# QC:
+# each proximal region should contain exactly
+# min(400, total annotated 3'UTR length) nucleotides.
+stopifnot(
+    all(
+        sum(
+            width(
+                threeutr_proximal
+            )
+        ) ==
+        pmin(
+            CONFIG$proximal_3utr_width,
+            sum(
+                width(
+                    threeutr_gr
+                )
+            )
+        )
+    )
+)
 
 # ------------------------------------------------------------------------------
 # 6. Read PTBP1 binding-site BED files
@@ -125,13 +269,26 @@ read_bed_as_granges <- function(
         header = FALSE,
         stringsAsFactors = FALSE
     )
-
-    if (ncol(bed) < 3) {
+    # PTBP1 eCLIP peaks are strand-specific.
+    # BED column 6 is therefore required.
+    
+    if (ncol(bed) < 6) {
         stop(
             "BED file must contain at least three columns: ",
+            "including strand in column 6: ",
             bed_file
         )
     }
+
+    peak_strand <- bed[[6]]
+    
+    peak_strand[
+        !peak_strand %in%
+            c(
+                "+",
+                "-"
+            )
+    ] <- "*"
 
     # BED coordinates are 0-based, half-open.
     # GRanges coordinates are 1-based, closed.
@@ -159,6 +316,26 @@ message(
     "PTBP1 binding intervals loaded: ",
     length(ptbp1_gr)
 )
+message(
+    "PTBP1 peaks by strand: ",
+    paste(
+        names(
+            table(
+                strand(
+                    ptbp1_gr
+                )
+            )
+        ),
+        table(
+            strand(
+                ptbp1_gr
+            )
+        ),
+        sep = "=",
+        collapse = ", "
+    )
+)
+
 
 
 # ------------------------------------------------------------------------------
@@ -251,11 +428,32 @@ saveRDS(
     CONFIG$output_file
 )
 
+write.table(
+    PTBP1_features,
+    sub(
+        "\\.rds$",
+        ".tsv",
+        CONFIG$output_file
+    ),
+    sep = "\t",
+    quote = FALSE,
+    row.names = FALSE
+)
 message(
     "PTBP1 3'UTR feature extraction complete."
 )
 
 message(
-    "Output: ",
+    "Output RDS: ",
     CONFIG$output_file
+)
+
+
+message(
+    "Output TSV: ",
+    sub(
+        "\\.rds$",
+        ".tsv",
+        CONFIG$output_file
+    )
 )
