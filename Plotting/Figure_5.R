@@ -24,7 +24,7 @@
 #      the grouping column so stat_pvalue_manual() works on all ggplot2/ggpubr
 #      versions.
 #
-# Required file: TOPMed_stopgain_September25_corrected_readyformodel.csv
+# Required file: ~/data/TOPMed_merged.csv
 # ══════════════════════════════════════════════════════════════════════════════
 
 library(tidyverse)
@@ -156,7 +156,7 @@ make_violin_panel <- function(df, pal_dark, pal_light, comparisons,
 # ══════════════════════════════════════════════════════════════════════════════
 # LOAD & PREP — ALLELE.RAT >= 0.35; transcript level = median per transcript
 # ══════════════════════════════════════════════════════════════════════════════
-df_raw <- read.csv("TOPMed_stopgain_September25_corrected_readyformodel.csv",
+df_raw <- read.csv("~/data/TOPMed_merged.csv",
                    stringsAsFactors = FALSE) %>%
   filter(!is.na(ALLELE.RAT), ALLELE.RAT >= 0.35, !is.na(TxName))
 cat(sprintf("Variants after ALLELE.RAT >= 0.35 filter: %d\n", nrow(df_raw)))
