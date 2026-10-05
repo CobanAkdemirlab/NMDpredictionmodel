@@ -38,7 +38,7 @@
 #                                  (scatter + LOESS, derivative, histogram)
 #
 # Required files in working directory:
-#   TOPMed_stopgain_September25_corrected_readyformodel.csv    (data for Panels A-F)
+#   ~/data/TOPMed_merged.csv   (data for Panels A-F)
 #   shap_cutoff_curve_data.csv                        (Panel G — variant scatter)
 #   shap_cutoff_loess.csv                             (Panel G — LOESS smooth)
 #   shap_cutoff_markers.csv                           (Panel G — markers)
@@ -180,7 +180,7 @@ y_scat     <- scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.0),
 # LOAD & PREP
 # ══════════════════════════════════════════════════════════════════════════════
 cat("Loading data...\n")
-df_raw <- read.csv("TOPMed_stopgain_September25_corrected_readyformodel.csv",
+df_raw <- read.csv("~/data/TOPMed_merged.csv",
                    stringsAsFactors = FALSE) %>%
   filter(!is.na(ALLELE.RAT), !is.na(PTC.2.start),
          !is.na(TxName), !is.na(cds_length), !is.na(exon_count),
