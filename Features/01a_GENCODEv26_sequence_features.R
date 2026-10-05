@@ -878,6 +878,24 @@ has_multiple_regions <- function(
     ) > 1
 }
 
+cds_intron_table <- data.frame(
+
+    txnames =
+        names(
+            cds_gr
+        ),
+
+    cdsseq.introns =
+        ifelse(
+            has_multiple_regions(
+                cds_gr
+            ),
+            "There is a cdsseq intron",
+            NA_character_
+        ),
+    stringsAsFactors = FALSE
+)
+
 
 threeutr_intron_table <- data.frame(
 
