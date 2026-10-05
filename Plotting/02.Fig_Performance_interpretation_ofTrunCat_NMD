@@ -1,3 +1,16 @@
-## To reproduce Figure 1, refer to 7. Generate Performance Plots:
-# https://github.com/CobanAkdemirlab/NMDpredictionmodel/blob/main/Model/TrunCat/notebooks/03_model_training.ipynb
+## To reproduce Figure 2----
+# For most of Figure 2, please refer to Model/TrunCat/notebooks/03_model_training.ipynb
+# for A, please refer to 7. Generate Performance Plots
 # section 
+
+
+# For B, refer to 4. PROBABILITY DISTRIBUTION
+
+# for C, refer to 8. Confusion Matrix and Classification Report
+# this will produce two then you can use the following to create one similar to what we have as a summary
+
+# for D, refer to # 7a. TOP 20 FEATURE IMPORTANCES BY MEAN |SHAP| (PRIMARY)
+
+# for E, refer to 9. Ablation Curve Report
+
+# for F, refer to 
