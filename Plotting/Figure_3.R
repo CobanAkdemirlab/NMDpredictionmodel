@@ -21,7 +21,7 @@
 #   D, F, G share one scatter style
 #
 # Required file:
-#   TOPMed_stopgain_September25_corrected_readyformodel.csv
+#   ~/data/TOPMed_merged.csv
 #
 # Filters applied:
 #   1. ALLELE.RAT >= 0.35 (excludes low-expression / strongly NMD-triggered
@@ -137,7 +137,7 @@ ref05 <- geom_hline(yintercept = 0.5, linetype = "dashed",
 # ══════════════════════════════════════════════════════════════════════════════
 # LOAD & PREP
 # ══════════════════════════════════════════════════════════════════════════════
-df_raw <- read.csv("TOPMed_stopgain_September25_corrected_readyformodel.csv",
+df_raw <- read.csv("~/data/TOPMed_merged.csv",
                    stringsAsFactors = FALSE) %>%
   filter(!is.na(ALLELE.RAT),
          ALLELE.RAT >= 0.35) %>%   # <<< NEW: restrict to variants with allele.rat >= 0.35
