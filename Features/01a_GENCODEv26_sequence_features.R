@@ -977,7 +977,13 @@ gencode_v26_sequence_features <-
         by = "txnames",
         all.x = TRUE
     )
-
+gencode_v26_sequence_features <-
+    merge(
+        gencode_v26_sequence_features,
+        cds_intron_table,
+        by = "txnames",
+        all.x = TRUE
+    )
 
 # ------------------------------------------------------------------------------
 # 23. Save transcript-level feature table
