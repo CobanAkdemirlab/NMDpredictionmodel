@@ -60,7 +60,7 @@ CANONICAL_TRANSCRIPT_FILE <- file.path(
     PROJECT_DIR,
     "Annotation",
     "reference",
-    "canonical_transcripts.tsv"
+    "BM_info.csv"
 )
 
 OUTPUT_DIR <- file.path(
@@ -160,7 +160,7 @@ DATASETS <- list(
 # 3. Load fixed canonical transcript reference
 # ------------------------------------------------------------------------------
 
-canonical_tx <- read.delim(
+canonical_tx <- read.csv(
     CANONICAL_TRANSCRIPT_FILE,
     stringsAsFactors = FALSE
 )
