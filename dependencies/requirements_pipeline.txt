@@ -1,0 +1,29 @@
+# NMDpredictionmodel — upstream Python dependencies
+#
+# Used by:
+#   Dataset_extraction/
+#   Annotation/
+#   Features/
+#
+# Install with:
+#   pip install -r dependencies/requirements_pipeline.txt
+#
+# Model-specific Python dependencies are listed separately in:
+#   Model/TrunCat/scripts/requirements.txt
+
+
+# Core data handling
+pandas>=2.1.0
+numpy>=1.24.0
+
+# Genomic file handling
+pysam
+pyfaidx
+gffutils
+pyBigWig
+
+# Sequence utilities
+biopython
+
+# Configuration
+PyYAML
