@@ -584,9 +584,7 @@ qc_results <- lapply(
                 dataset_name,
 
             config =
-                DATASETS[
-                    [dataset_name]
-                ]
+                DATASETS[[dataset_name]]
         )
     }
 )
