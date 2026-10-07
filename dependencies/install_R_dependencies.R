@@ -22,6 +22,7 @@ cran_packages <- c(
     "tidyr",
     "data.table",
     "readr",
+    "readxl",
     "stringr",
     "tibble",
     "purrr",
@@ -82,7 +83,9 @@ bioc_packages <- c(
     "GenomicFeatures",
     "Biostrings",
     "VariantAnnotation",
-    "rtracklayer"
+    "AnnotationDbi",
+    "rtracklayer",
+    "BSgenome.Hsapiens.UCSC.hg38"
 )
 
 
@@ -159,6 +162,7 @@ if (!requireNamespace(
 required_packages <- c(
     "aenmd.data.ensdb.v105",
     "aenmd",
+    "AnnotationDbi",
     "S4Vectors",
     "IRanges",
     "GenomicRanges",
@@ -167,9 +171,13 @@ required_packages <- c(
     "Biostrings",
     "VariantAnnotation",
     "rtracklayer",
+    "BSgenome.Hsapiens.UCSC.hg38",
     "dplyr",
     "tidyr",
-    "data.table"
+    "data.table",
+    "readr",
+    "readxl",
+    "stringr"
 )
 
 
