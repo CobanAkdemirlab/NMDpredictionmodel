@@ -114,13 +114,35 @@ for (pkg in bioc_packages) {
 # variants predicted to create premature termination codons.
 # ------------------------------------------------------------------------------
 
+
+if (!requireNamespace(
+    "aenmd.data.ensdb.v105",
+    quietly = TRUE
+)) {
+
+    message(
+        "Installing aenmd annotation data..."
+    )
+
+    remotes::install_github(
+        repo = "kostkalab/aenmd_data",
+        subdir = "aenmd.data.ensdb.v105",
+        upgrade = "never"
+    )
+}
+
+
+# ------------------------------------------------------------------------------
+# aenmd
+# ------------------------------------------------------------------------------
+
 if (!requireNamespace(
     "aenmd",
     quietly = TRUE
 )) {
 
     message(
-        "Installing aenmd from GitHub..."
+        "Installing aenmd..."
     )
 
     remotes::install_github(
@@ -130,12 +152,12 @@ if (!requireNamespace(
     )
 }
 
-
 # ------------------------------------------------------------------------------
 # Verify installation
 # ------------------------------------------------------------------------------
 
 required_packages <- c(
+    "aenmd.data.ensdb.v105",
     "aenmd",
     "S4Vectors",
     "IRanges",
