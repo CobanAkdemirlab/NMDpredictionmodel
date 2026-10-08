@@ -5,6 +5,10 @@ All three share `../config/config.yaml`. Paths resolve via `BASE_DIR`
 anchored to `Model/TrunCat/`, so notebooks work regardless of Jupyter
 launch directory.
 
+Standalone Python equivalents of the three stages are in
+[`../scripts/`](../scripts/README.md); `../scripts/check_parity.py` checks that
+scripts and notebooks produce the same outputs.
+
 Run in order:
 
 ```bash
@@ -12,6 +16,9 @@ jupyter notebook 01_data_loading_and_merging.ipynb
 jupyter notebook 02_feature_cleaning_and_selection.ipynb
 jupyter notebook 03_model_training.ipynb
 ```
+
+The other notebooks in this folder are analyses run after stage 03; see the
+table in [`../README.md`](../README.md).
 
 ---
 
@@ -35,7 +42,9 @@ merges into a single training table.
 
 **Key operations:** indel removal via V7/V8 allele scanning; `variantID`
 key standardization; deprecated feature drop (`AverageCodonRNAUsage`,
-`median_half_life`); AUG distance/Kozak/frame engineering; left-join merge.
+`median_half_life`); AUG distance/Kozak/frame engineering; left-join merge;
+columns reordered to `../config/feature_column_order.txt` (CatBoost results
+shift slightly with column order, so this order is fixed).
 
 ---
 
@@ -72,6 +81,7 @@ generates publication figures.
 
 **Outputs:**
 
+```text
 model/
 ├── truncat.cbm           ← final model (all data)
 └── truncat.pkl
@@ -82,27 +92,32 @@ results/
 ├── feature_importances_cv_averaged.csv
 ├── model_performance_summary.txt
 └── figures/visualizations_cv/
-├── 1_roc_curve.{png,pdf}
-├── 2_precision_recall_curve.{png,pdf}
-├── 3_confusion_matrix.{png,pdf}
-├── 4_probability_distribution.{png,pdf}
-├── 5_performance_dashboard.{png,pdf}
-├── 7a_feature_importance_shap_top20.{png,pdf}
-├── 7b_feature_importance_native_top20.{png,pdf}
-├── 7c_feature_importance_comparison.{png,pdf}
-└── shap_manuscript/
-├── 6_shap_summary_cv_averaged.{png,pdf}
-├── 8a_shap_waterfall_escape_example.{png,pdf}
-├── 8b_shap_waterfall_sensitive_example.{png,pdf}
-├── shap_feature_importance_rankings.csv
-└── feature_importance_comparison.csv
+    ├── 1_roc_curve.{png,pdf}
+    ├── 2_precision_recall_curve.{png,pdf}
+    ├── 3_confusion_matrix.{png,pdf}
+    ├── 4_probability_distribution.{png,pdf}
+    ├── 5_performance_dashboard.{png,pdf}
+    ├── 7a_feature_importance_shap_top20.{png,pdf}
+    ├── 7b_feature_importance_native_top20.{png,pdf}
+    ├── 7c_feature_importance_comparison.{png,pdf}
+    └── shap_manuscript/
+        ├── 6_shap_summary_cv_averaged.{png,pdf}
+        ├── 8a_shap_waterfall_escape_example.{png,pdf}
+        ├── 8b_shap_waterfall_sensitive_example.{png,pdf}
+        ├── shap_feature_importance_rankings.csv
+        └── feature_importance_comparison.csv
+```
 
 **Key operations:**
-- 5-fold stratified CV with out-of-fold predictions for unbiased metrics
+- 5-fold gene-grouped stratified CV (`StratifiedGroupKFold`, seed 42; all variants of a gene stay in one fold), fixed 250 iterations, no early stopping, with out-of-fold predictions for unbiased metrics
 - Native CatBoost importances averaged across all folds
 - SHAP values computed per-fold (500-sample subsets) then aggregated
-- Youden-optimal threshold derived from OOF predictions
-- Final model trained on complete dataset for deployment
+- Youden-optimal threshold derived from OOF predictions (0.4747)
+- Final model trained on the complete dataset with the same fixed iterations for deployment
+
+**Reproducibility:** scikit-learn 1.3–1.7 reproduces the committed folds;
+1.8 changes the `StratifiedGroupKFold` splits. See [`../README.md`](../README.md)
+for tested versions.
 
 ---
 
@@ -111,7 +126,8 @@ results/
 | Choice | Rationale |
 |--------|-----------|
 | CatBoost classifier | Native categorical support, robust to missing values, ordered boosting |
-| 5-fold stratified CV | Unbiased AUC, consistent with published NMD predictor benchmarks |
+| 5-fold gene-grouped stratified CV | Keeps every variant of a gene in one fold, so AUC is not inflated by gene-level leakage |
+| Fixed iterations, no early stopping | The evaluation fold is never used to choose training length |
 | OOF predictions | Unbiased probability estimates for threshold selection |
 | Mean \|SHAP\| for importance | Fairer than native importance for correlated feature sets |
 | Youden-optimal threshold | Balances sensitivity and specificity |
