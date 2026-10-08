@@ -86,6 +86,13 @@ Run from `notebooks/`. Outputs go to `results/`.
 annotation columns the model was trained on (listed in the `feature` column of
 `data/final_feature_list.csv`), generated with the scripts in `Features/`.
 
+## UCSC Genome Browser track
+
+TrunCat predictions for the scored gnomAD, ClinVar and GREGoR variants are
+available as a UCSC track hub (hg38):
+[load in the Genome Browser](https://genome.ucsc.edu/cgi-bin/hgTracks?hubUrl=https://raw.githubusercontent.com/CobanAkdemirLab/NMDpredictionmodel/main/Model/TrunCat/track/hub.txt&db=hg38).
+Files and rebuild instructions are in [`track/`](track/README.md).
+
 ## Related
 
 For a lightweight version using only 8 features - suitable for scoring
