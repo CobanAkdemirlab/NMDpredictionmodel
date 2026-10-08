@@ -377,7 +377,7 @@ def clean_and_align(
         warnings.warn(
             "No training_medians provided — median-impute features will retain NaN. "
             "CatBoost will handle NaNs natively, but this is NOT identical to training. "
-            "Run export_training_medians.py against TOPMed_cleaned_v4.csv to fix.",
+            "Regenerate training_medians.json from data/TOPMed_cleaned.csv to fix.",
             stacklevel=2,
         )
 
@@ -514,7 +514,7 @@ def sanity_check_predictions(pred_df: pd.DataFrame, threshold: float) -> None:
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="spooky_model v4.1 inference on new variant cohorts",
+        description="TrunCat inference on new variant cohorts",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument("--input", required=True, type=Path,
@@ -527,7 +527,7 @@ def _parse_args() -> argparse.Namespace:
                    help="Path to trained CatBoost model (.cbm).")
     p.add_argument("--training-medians", type=Path,
                    default=Path("models/training_medians.json"),
-                   help="JSON of medians from training cleaned CSV (see export_training_medians.py).")
+                   help="JSON of medians from training cleaned CSV.")
     p.add_argument("--viz-summary", type=Path,
                    default=Path("results/figures/viz_summary.json"),
                    help="viz_summary.json from notebook 03, used for the Youden threshold.")
@@ -556,7 +556,7 @@ def main() -> int:
 
     label = args.label or args.input.stem
     print("=" * 80)
-    print(f"spooky_model v4.1 inference: {label}")
+    print(f"TrunCat inference: {label}")
     print("=" * 80)
 
     # ── Load model ───────────────────────────────────────────────────────────
