@@ -97,8 +97,8 @@ dominates start_proximal), and missing-feature handling.
 
 ## Comparison against TrunCat / TrunKitten
 
-Lives in a notebook (suggested:
-`Model/TrunCat/notebooks/05_nmdetective_comparison.ipynb`), not here.
+The comparison against TrunCat and TrunKitten is in
+[`benchmark_nmdetectiveB.ipynb`](benchmark_nmdetectiveB.ipynb) in this folder.
 
 For the AUC comparison: TrunCat predicts probability of *escape*, while
 NMDetective-B predicts NMD efficacy (higher = more decay). To score
