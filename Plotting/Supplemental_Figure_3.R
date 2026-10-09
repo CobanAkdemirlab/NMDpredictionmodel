@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# NMD Supplemental Figure 2 — 4-panel transcript features (v3)
+# NMD Supplemental Figure 3 — 4-panel transcript features (v3)
 #
 # v3: unit of analysis restored to match the original (June) Figure S2:
 #   A, C, D = TRANSCRIPT-level: one point per transcript, median ALLELE.RAT of
