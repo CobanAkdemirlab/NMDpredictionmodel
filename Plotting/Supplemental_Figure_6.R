@@ -1,6 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# NMD Supplemental Figure 4 — relative PTC location x transcript architecture
-#   (rebuilt October 2026 for the corrected dataset; original script lost)
+# Supplemental Figure 6 — relative PTC location x transcript architecture
 #
 # Panels (2 x 2):
 #   A = NMD efficiency by relative-PTC-location tertile, faceted by CDS length
