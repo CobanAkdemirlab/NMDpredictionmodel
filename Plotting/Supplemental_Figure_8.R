@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# NMD — Supplemental Figure: 5'UTR Features vs NMD Efficiency  (v4)
+# Supplemental Figure 8: 5'UTR Features vs NMD Efficiency  (v4)
 #
 #   Panel A: 5'UTR AU content tertile         (Low / Medium / High)
 #   Panel B: 5'UTR UC content tertile         (Low / Medium / High)
@@ -25,7 +25,7 @@
 #   - output: SupplementalFigure6_revised.pdf / .png
 #
 # Required file:
-#   TOPMed_stopgain_September25_corrected_readyformodel.csv
+#   TOPMed_stopgain.csv
 # ══════════════════════════════════════════════════════════════════════════════
 
 library(tidyverse)
