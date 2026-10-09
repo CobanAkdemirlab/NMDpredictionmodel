@@ -1,4 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
+# Supplemental Figure 13
 # LMNA saturation genome editing (Cortázar et al. 2025) vs TrunKitten (8-feature)
 #   Experimental NMD efficiency (norm_mean) by TrunKitten binary call:
 #   NMD-triggering vs NMD-escape (escape_pred_at_youden, threshold_used in data)
