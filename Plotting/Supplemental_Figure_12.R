@@ -1,5 +1,6 @@
 ################################################################################
-# NMD escape prediction — Panels A-G (capital letters)
+#   Supplemetal Figure 12 
+#   NMD escape prediction — Panels A-G (capital letters)
 #   Restricted to genes that are BOTH:
 #     (1) HIGHLY INTOLERANT  (LOEUF < 0.60  AND  pLI >= 0.90)   [v4.1 default]
 #     (2) AUTOSOMAL DOMINANT (omim_AD_symbols.csv)
