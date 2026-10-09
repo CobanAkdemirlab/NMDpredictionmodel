@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# NMD — Supplemental Figure: 3'UTR Features vs NMD Efficiency
+# Supplemental Figure 7: 3'UTR Features vs NMD Efficiency
 #
 #   A = 3'UTR length (all variants) → Beeswarm + box, Short vs Long
 #   B = 3'UTR length (last-exon)   → Beeswarm + box, Short vs Long, LAST-EXON ONLY
@@ -13,7 +13,7 @@
 # (GC content panel removed in this version.)
 # Last-exon defined as last.EJC == "last.exon".
 #
-# Required file: TOPMed_stopgain_September25_corrected_readyformodel.csv
+# Required file: TOPMed_stopgain.csv
 #
 # v2 (corrected dataset, October 2026):
 #   - input switched to the corrected September 25 file (as Figures 3-6, S2-S4)
