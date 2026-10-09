@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# NMD Supplemental Figure 3 — downstream-EJC effect across strata
+# NMD Supplemental Figure 4 — downstream-EJC effect across strata
 #   (rebuilt October 2026 for the corrected dataset; original script lost)
 #
 # Panels (2 x 2):
