@@ -1,464 +1,80 @@
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/CobanAkdemirlab/NMDpredictionmodel/blob/main/TrunCat_ClinVar_End_to_End_GitHub.ipynb)
 # NMDpredictionmodel
 
-This repository contains the computational workflow used to annotate premature termination codon (PTC) variants, generate genomic and transcriptomic features, and develop machine-learning models for predicting nonsense-mediated mRNA decay (NMD) efficiency.
+This repository contains the computational workflow for annotating premature termination codon (PTC) variants, generating genomic and transcriptomic features, and developing machine-learning models to predict nonsense-mediated mRNA decay (NMD) efficiency.
 
-The workflow was developed using allele-specific expression (ASE) data from TOPMed and applied to independent population and disease datasets including gnomAD, ClinVar, and GREGoR.
+TrunCat was developed using allele-specific expression (ASE) data from **TOPMed Freeze 9b**. The trained model was subsequently applied to **gnomAD v4.1, ClinVar (February 1, 2026), and GREGoR**. These external datasets were not used for model training.
 
----
+## Getting started with Google Colab
 
-## Overview
+We provide a step-by-step ClinVar example notebook to demonstrate variant annotation, feature generation, and application of the trained TrunCat model.
 
-The analysis consists of four major stages:
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/CobanAkdemirlab/NMDpredictionmodel/blob/main/TrunCat_ClinVar_End_to_End_GitHub.ipynb)
 
-1. **Dataset extraction and preprocessing**
-2. **PTC and transcript annotation**
-3. **Feature generation**
-4. **Machine-learning model development and evaluation**
+**[Open the TrunCat ClinVar tutorial](TrunCat_ClinVar_End_to_End_GitHub.ipynb)** · **[Example VCF](examples/)**
 
-TOPMed was used as the model-development dataset because matched genomic and allele-specific expression information was available.
+The tutorial is organized around five stages: environment setup; variant and PTC annotation; feature generation; model prediction; and results, including ClinVar clinical significance and visualization.
 
-gnomAD, ClinVar, and GREGoR were processed using the same annotation and feature-generation framework for external application of the trained model.
+**Reproducibility status:** The notebook has not yet been verified to execute uninterrupted in a fresh Colab runtime. Some steps may require additional reference resources or configuration. The repository's scripts and directory READMEs document the individual processing stages.
 
----
-
-## Pipeline Overview
+## Pipeline overview
 
 ```text
-                         ┌── TOPMed ──────┐
-                         ├── gnomAD ──────┤
-Raw datasets ────────────├── ClinVar ─────┤
-                         └── GREGoR ──────┘
-                                  │
-                                  ▼
-                        Dataset extraction
-                                  │
-                                  ▼
-                       Variant annotation
-                                  │
-                                  ▼
-                 GENCODE v26 transcript structure
-                                  │
-                                  ▼
-                         PTC annotation
-                                  │
-                                  ▼
-                   Shared variant filtering
-                                  │
-                                  ▼
-                       Feature generation
-                                  │
-                                  ▼
-                      Feature matrix assembly
-                                  │
-                     ┌────────────┴────────────┐
-                     ▼                         ▼
-             TOPMed model training      External application
-                                       gnomAD / ClinVar /
-                                            GREGoR
+TOPMed Freeze 9b ────────┐
+gnomAD v4.1 ─────────────┤
+ClinVar (2026-02-01) ────┼──> Dataset-specific extraction
+GREGoR ──────────────────┘               |
+                                        v
+                              Variant / PTC annotation
+                              (ANNOVAR, GENCODE v26)
+                                        |
+                                        v
+                                Feature generation
+                                        |
+                                        v
+                               Feature matrix assembly
+                                        |
+                           +------------+------------+
+                           |                         |
+                           v                         v
+                     TOPMed training          External prediction
+                     and evaluation        (gnomAD / ClinVar / GREGoR)
 ```
 
-For TOPMed, an additional ASE-processing step is used to derive the NMD outcome variable for model development.
+TOPMed additionally uses matched genomic and RNA-seq information to derive the ASE-based outcome for model development. The downstream variant analyses described here focus on PTC-producing single-nucleotide variants (SNVs).
 
----
+## Workflow documentation
 
-## Repository Structure
-
-```text
-NMDpredictionmodel/
-│
-├── Dataset_extraction/
-│   ├── 01a_TOPMed_preprocessing.sh
-│   ├── 01b_TOPMed_extraction.R
-│   ├── 02_gnomAD_extraction.R
-│   ├── 03_ClinVar_extraction.R
-│   ├── 04_GREGoR_extraction.R
-│   └── README.md
-│
-├── Annotation/
-│   ├── 01_variant_annotation.R
-│   ├── 02_GENCODEv26_transcript_structure.R
-│   ├── 03_PTC_annotation.R
-│   ├── 04_shared_variant_filtering.R
-│   ├── 05_TOPMed_ASE_simulation.R
-│   └── README.md
-│
-├── Features/
-│   ├── 01a_GENCODEv26_sequence_features.R
-│   ├── 01b_GENCODEv26_intron_features.py
-│   ├── 02_PTBP1_binding_features.R
-│   ├── 03_PTC_amino_acid_context.R
-│   ├── 04_gene_level_features.R
-│   ├── 05_PTC_geometry_derived_features.R
-│   ├── 06a_prepare_variant_scores.R
-│   ├── 06b_run_variant_scores.sh
-│   ├── 06c_merge_variant_scores.R
-│   ├── 07a_motif_region_extraction.py
-│   ├── 07b_FIMO_motif_features.py
-│   ├── 08a_make_optimal_codons_from_trna.py
-│   ├── 08b_codon_optimality_features.py
-│   ├── 09_conservation_score_features.py
-│   ├── 10_EJC_occupancy_features.py
-│   ├── 11_PTC_AUG_features.py
-│   ├── 12_readthrough_features.py
-│   ├── 13_isoforn_count_features.py
-│   ├── 99_build_feature_matrix.R
-│   │
-│   ├── helpers/
-│   │   └── transcript_to_gene_mapping.py
-│   │
-│   ├── reference/
-│   │   └── codon_optimality/
-│   │       ├── hg38_UCSC_tRNA_table.tsv
-│   │       └── optimal_codons.txt
-│   │
-│   └── README.md
-│
-├── Model/
-│   ├── TrunCat/
-│   └── TrunKitten/
-│
-├── Plotting/
-│   └── [figure-generation scripts]
-│
-└── README.md
-```
-
----
-
-## 1. Dataset Extraction
-
-Dataset-specific preprocessing scripts are located in `Dataset_extraction/`.
-
-Four variant datasets are processed:
-
-| Dataset | Role in analysis |
+| Directory | What it contains |
 |---|---|
-| **TOPMed Freeze 9b** | Model development and ASE-based NMD outcome |
-| **gnomAD v4.1** | External population dataset |
-| **ClinVar** | External clinically ascertained variant dataset |
-| **GREGoR** | External rare-disease dataset |
+| [`Dataset_extraction/`](Dataset_extraction/README.md) | Dataset-specific preparation of TOPMed, gnomAD, ClinVar, and GREGoR variants; ANNOVAR input preparation |
+| [`Annotation/`](Annotation/README.md) | Shared transcript structure, PTC geometry and NMD-rule annotations; TOPMed ASE processing |
+| [`Features/`](Features/README.md) | Sequence, transcript, gene-level, motif, conservation, codon, EJC, AUG, and readthrough features; feature assembly |
+| [`Model/TrunCat/`](Model/TrunCat/) | Model development, trained CatBoost classifier, and prediction utilities |
+| [`Model/TrunKitten/`](Model/TrunKitten/) | Additional model analyses |
+| [`Plotting/`](Plotting/) | Manuscript figures and exploratory analyses |
+| [`examples/`](examples/) | Example input files for testing the workflow |
 
-Candidate protein-truncating variants were initially identified from the source datasets. Downstream analyses in this repository were restricted to **single-nucleotide PTC variants (SNVs)**.
+For the required inputs, individual scripts, reference files, and processing details, follow the README in each directory.
 
-Each dataset is converted to a standardized variant representation before entering the shared annotation and feature-generation workflow.
+## TrunCat prediction
 
-See `Dataset_extraction/README.md` for dataset-specific processing details.
+The trained TrunCat classifier outputs a **predicted probability of NMD escape** (class 1). The documented decision threshold is **0.4747**:
 
----
+- **NMD:** escape probability below 0.4747.
+- **NMD escape:** escape probability at or above 0.4747.
 
-## 2. Variant and PTC Annotation
+The trained model and prediction utilities are under [`Model/TrunCat/`](Model/TrunCat/). ClinVar pathogenicity labels are separate clinical annotations, **not** experimentally observed NMD outcomes or model predictors.
 
-Shared annotation scripts are located in `Annotation/`.
+## Reference framework and software
 
-### Variant annotation
-
-`01_variant_annotation.R`
-
-Processes ANNOVAR transcript annotations and selects the transcript annotation used for downstream analyses.
-
-### GENCODE transcript structure
-
-`02_GENCODEv26_transcript_structure.R`
-
-Constructs transcript-level reference information from **GENCODE v26**, including CDS structure, exon structure, CDS length, and exon count.
-
-### PTC annotation
-
-`03_PTC_annotation.R`
-
-Maps each PTC to its coding transcript and derives core NMD-related positional annotations, including:
-
-- coding position
-- PTC-bearing exon
-- distance from the PTC to the downstream exon junction
-- distance from the PTC to the start and end of the CDS
-- last-exon status
-- penultimate-exon / last-50-nt status
-- number of downstream exon junctions
-
-### Shared variant filtering
-
-`04_shared_variant_filtering.R`
-
-Applies the common eligibility and filtering criteria used across datasets, including transcript structure and expression-related filters.
-
-### TOPMed ASE outcome
-
-`05_TOPMed_ASE_simulation.R`
-
-TOPMed-specific processing is used to construct the ASE-derived outcome for model development.
-
-The reference-allele ratio is calculated as:
-
-```text
-reference allele reads
-────────────────────────────
-reference + alternate reads
-```
-
-Repeatedly observed variants are handled using the carrier-sampling procedure implemented in the script.
-
----
-
-## 3. Feature Generation
-
-Feature-generation scripts are located in `Features/`.
-
-Features span multiple biological levels.
-
-### Transcript and sequence features
-
-Derived from GENCODE v26 transcript structure and sequence, including:
-
-- CDS length
-- 5′ and 3′ UTR characteristics
-- exon architecture
-- nucleotide and dinucleotide composition
-- transcript sequence context
-
-### PTC geometry
-
-PTC-specific positional features include:
-
-- relative PTC position within the CDS
-- PTC-bearing exon
-- number of exons before and after the PTC
-- distance from the PTC to exon boundaries
-- relative position within the PTC-bearing exon
-
-### Gene-level features
-
-Gene-level annotations include:
-
-- GTEx expression
-- gnomAD constraint metrics
-- mRNA half-life features
-
-### Variant-level scores
-
-Variant-level annotations include scores derived using ANNOVAR-compatible annotation databases, including:
-
-- CADD
-- REVEL
-- gnomAD allele frequency
-
-### RNA-binding protein motifs
-
-Sequence regions surrounding the PTC, downstream exon junction, and untranslated regions are extracted and scanned using **FIMO (MEME Suite)**.
-
-Motif matches are converted into variant-level RNA-binding protein feature matrices.
-
-### Codon optimality
-
-Optimal codons are derived from the **hg38 GtRNAdb-based tRNA annotation available through the UCSC Table Browser**.
-
-`08a_make_optimal_codons_from_trna.py` reverse-complements each anticodon, counts tRNA gene copies per codon, and selects the most highly represented codon(s) for each amino acid.
-
-The resulting `optimal_codons.txt` is used by `08b_codon_optimality_features.py` to calculate CDS-wide and PTC-local codon-optimality features.
-
-### Conservation
-
-Conservation features are calculated from the hg38:
-
-- **phastCons100way**
-- **phyloP100way**
-
-BigWig tracks.
-
-### EJC occupancy
-
-Experimentally determined EJC occupancy information is derived from RIP-seq data associated with **NCBI GEO accession GSE41154**.
-
-### Downstream AUG and Kozak context
-
-Downstream AUG codons are identified in the reference transcript sequence in the original, +1, and +2 reading frames.
-
-The workflow also evaluates sequence context surrounding downstream AUGs, including Kozak-context features.
-
-### Readthrough features
-
-PTC sequence context is evaluated using the readthrough scoring procedure implemented in `12_readthrough_features.py`.
-
----
-
-## 4. Feature Matrix Assembly
-
-`Features/99_build_feature_matrix.R` combines the individual feature tables using the standardized variant identifier.
-
-The TOPMed model-development dataset produces the feature matrix used for machine-learning analysis:
-
-```text
-5,749 variants × 619 features
-```
-
-The same feature definitions are used when constructing matrices for gnomAD, ClinVar, and GREGoR.
-
-Feature names and ordering are aligned to the TOPMed training feature set before external prediction.
-
----
-
-## 5. Model Development and External Prediction
-
-Model-development and prediction workflows are located in `Model/`.
-
-### TrunCat
-
-TrunCat is the primary classifier developed using the TOPMed ASE-derived NMD
-outcome and the integrated genomic and transcriptomic feature matrix.
-
-The TrunCat directory separates **model development using TOPMed** from
-**application of the trained model to independent datasets**:
-
-```text id="f85n7z"
-Model/TrunCat/
-│
-├── data/
-│   └── TOPMed model-development datasets
-│
-├── notebooks/
-│   └── TrunCat data preparation, feature preprocessing,
-│       model training, evaluation, and interpretation
-│
-├── model/
-│   └── trained TrunCat model objects
-│
-├── results/
-│   └── model-development results
-│
-└── predict/
-    └── external prediction workflow and prediction files
-```
----
-
-## 6. Visualization and Exploratory Analyses
-
-Scripts used for manuscript figures and exploratory analyses are maintained separately from the primary feature-generation workflow.
-
-These analyses include:
-
-- feature distributions
-- NMD efficiency by biological feature
-- continuous PTC-position relationships
-- model performance
-- SHAP feature importance
-- external prediction summaries
-
-Variables created only for visualization or exploratory categorization are not treated as primary feature annotations unless they were included in the model feature matrix.
-
----
-
-## Software Requirements
-
-### R
-
-R ≥ 4.2
-
-Major R packages used across the workflow include:
-
-- `dplyr`
-- `tidyr`
-- `data.table`
-- `GenomicRanges`
-- `GenomicFeatures`
-- `Biostrings`
-- `rtracklayer`
-
-### Python
-
-Python ≥ 3.8
-
-Major Python packages include:
-
-- `pandas`
-- `numpy`
-- `pysam`
-- `pyfaidx`
-- `gffutils`
-- `pyBigWig`
-- `Biopython`
-
-### External software
-
-- ANNOVAR
-- bcftools
-- MEME Suite / FIMO
-
-The motif-analysis workflow was performed using **MEME Suite 5.5.5**.
-
----
-
-## Reference Genome and Transcript Annotation
-
-Unless otherwise specified, analyses use:
-
-- **Genome assembly:** GRCh38 / hg38
+- **Genome:** GRCh38 / hg38
 - **Transcript annotation:** GENCODE v26
-- **ANNOVAR gene annotation:** `ensGene`
+- **ANNOVAR annotation:** `ensGene`
+- **Main languages:** R and Python
+- **External tools used in the workflow:** ANNOVAR, bcftools, MEME Suite / FIMO (motif analyses used MEME Suite 5.5.5)
 
-Additional feature-specific reference resources are documented in `Features/README.md` and within the corresponding scripts.
-
----
-
-## Running the Workflow
-
-The main workflow should be run in the following order:
-
-```text
-1. Dataset_extraction/
-          ↓
-2. Annotation/
-          ↓
-3. Features/
-          ↓
-   99_build_feature_matrix.R
-          ↓
-4. Model/
-          ↓
-5. Plotting/
-```
-
-Scripts within the feature-generation stage represent different feature families and are not necessarily sequential unless explicitly indicated.
-
-For example:
-
-```text
-07a_motif_region_extraction.py
-              ↓
-07b_FIMO_motif_features.py
-```
-
-and:
-
-```text
-08a_make_optimal_codons_from_trna.py
-              ↓
-08b_codon_optimality_features.py
-```
-
----
-
-## Reproducibility
-
-The repository has been organized so that each major analysis step has an explicit input and output and can be traced from the source variant datasets to the final model feature matrix.
-
-Dataset-specific preprocessing is separated from shared annotation and feature-generation procedures.
-
-Large source datasets that cannot be distributed through GitHub are documented with their source and version where possible. Smaller derived reference files required for reproducibility are included when redistribution permits.
-
-Local file paths should be configured before running the workflow rather than being interpreted as part of the analysis specification.
-
----
+Additional R/Bioconductor and Python dependencies, reference resources, and script-specific setup are described in the directory READMEs and source code. Controlled-access TOPMed and GREGoR data cannot be redistributed in this repository.
 
 ## Outputs
 
-The workflow produces:
-
-- standardized PTC variant datasets
-- transcript and PTC annotations
-- individual biological feature tables
-- the integrated model feature matrix
-- trained NMD prediction models
-- model performance results
-- SHAP feature-importance results
-- manuscript figures
+Depending on the workflow, outputs include standardized PTC variants, transcript/PTC annotations, biological feature tables, integrated model inputs, NMD predictions, model evaluation summaries, and figures. The TOPMed model-development analysis used **5,749 variants and 619 selected features**.
