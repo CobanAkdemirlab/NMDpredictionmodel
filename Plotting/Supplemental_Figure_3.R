@@ -1,28 +1,6 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# NMD Supplemental Figure 3 — 4-panel transcript features (v3)
+# Supplemental Figure 3 — 4-panel transcript features (v3)
 #
-# v3: unit of analysis restored to match the original (June) Figure S2:
-#   A, C, D = TRANSCRIPT-level: one point per transcript, median ALLELE.RAT of
-#             its variants (original n: 348 / 2,739; 1,301 / 1,028 / 883;
-#             694 / 1,024 / 1,021 / 473 -> 3,212 transcripts)
-#   B       = VARIANT-level: allele frequency is a property of the variant, not
-#             the transcript (original n: 4,163 / 1,584)
-#   v2 had plotted every panel at variant level. Each panel now carries a
-#   caption stating its level, as in Supplemental Figure 3.
-#
-# v2 (corrected dataset):
-#   - Input switched from TOPMed_stopgain_withfullpenultimateMarch30.csv to the
-#     corrected TOPMed_stopgain_September25_corrected_readyformodel.csv
-#     (same file as revised Figures 3, 4 and 6)
-#   - Filter changed from ALLELE.RAT > 0.35 to ALLELE.RAT >= 0.35, matching the
-#     main figures (5,749 variants)
-#   - Checks that every required column exists before plotting; if pLI.cat is
-#     missing but a numeric pLI column is present, the tolerance bins are
-#     rebuilt from it with the same cut-offs (>= 0.65 / < 0.35)
-#   - Prints the n per group for each panel (for the figure legend)
-#   - Output renamed SupplementalFigure2_revised.pdf / .png
-#   - Layout: n labels raised above the bracket tiers (no collisions), no
-#     padded spaces in n labels, exon-count labels on two lines
 #
 # Panels (single row):
 #   A = Gene tolerance  (Highly intolerant vs Highly tolerant)        [Mann-Whitney]
@@ -33,12 +11,12 @@
 #   aggregation.
 #
 # Required file:
-#   TOPMed_stopgain_September25_corrected_readyformodel.csv
+#   TOPMed_stopgain.csv
 #
 # Filter applied:
 #   ALLELE.RAT >= 0.35
 #
-# Expected columns (as in the March 30 file; checked at load time):
+# Expected columns:
 #   pLI.cat     -> already-binned gene tolerance
 #                  ("highly intolerant (pLI>=0.65)" / "highly tolerant (pLI<0.35)")
 #   Freq.cat    -> already-binned allele frequency
@@ -67,7 +45,7 @@ EXON_CUTS  <- c(5, 10, 20)
 # ══════════════════════════════════════════════════════════════════════════════
 # LOAD & FILTER
 # ══════════════════════════════════════════════════════════════════════════════
-INPUT_CSV <- "TOPMed_stopgain_September25_corrected_readyformodel.csv"
+INPUT_CSV <- "TOPMed_stopgain.csv"
 AR_MIN    <- 0.35
 
 df <- read.csv(INPUT_CSV, stringsAsFactors = FALSE) %>%
