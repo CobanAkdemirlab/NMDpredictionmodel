@@ -15,15 +15,13 @@
 #
 # Required file: TOPMed_stopgain.csv
 #
-# v2 (corrected dataset, October 2026):
-#   - input switched to the corrected September 25 file (as Figures 3-6, S2-S4)
 #   - filter ALLELE.RAT >= 0.35 (was > 0.35), matching all other figures
 #   - column check at load time; if the PhastCons category or log2 3'UTR length
 #     columns were dropped in feature cleaning, they are rebuilt from the
 #     numeric columns with the same cut-offs
 #   - unused libraries (ggdist, gghalves) no longer loaded
 #   - prints n per group for every panel (for the legend)
-#   - output: SupplementalFigure5_revised.pdf / .png
+#   - output: SupplementalFigure5.pdf / .png
 # ══════════════════════════════════════════════════════════════════════════════
 
 library(tidyverse)
@@ -104,7 +102,7 @@ seq_comp <- function(lvls) lapply(seq_len(length(lvls) - 1),
 # ══════════════════════════════════════════════════════════════════════════════
 # LOAD & PREP
 # ══════════════════════════════════════════════════════════════════════════════
-INPUT_CSV <- "TOPMed_stopgain_September25_corrected_readyformodel.csv"
+INPUT_CSV <- "TOPMed_stopgain.csv"
 df_raw <- read.csv(INPUT_CSV, stringsAsFactors = FALSE) %>%
   filter(!is.na(ALLELE.RAT), !is.na(TxName),
          ALLELE.RAT >= 0.35)          # v2: >= (was >), same as all other figures
@@ -636,9 +634,9 @@ show_n("E 3'UTR intron (last exon)", dfE,    "utr_intron")
 show_n("F PhastCons",                dfF,    "phast_utr3")
 cat("C/D: AU and UC tertiles, see plot labels\n")
 
-ggsave("SupplementalFigure5_revised.pdf", combined,
+ggsave("SupplementalFigure5.pdf", combined,
        width = 60, height = 78, dpi = 300, limitsize = FALSE)
-ggsave("SupplementalFigure5_revised.png", combined,
+ggsave("SupplementalFigure5.png", combined,
        width = 60, height = 78, dpi = 150, limitsize = FALSE)
 
-cat("Saved: SupplementalFigure5_revised.pdf / .png\n")
+cat("Saved: SupplementalFigure5.pdf / .png\n")
