@@ -2,8 +2,8 @@
 # Derived PTC geometry features
 #
 # Purpose:
-#   Generate transcript-relative and exon-relative positional features for
-#   premature termination codon (PTC) variants.
+#   Generate transcript-relative, exon-relative, and PTC-dependent
+#   positional features for premature termination codon (PTC) variants.
 #
 # Shared across:
 #   - TOPMed
@@ -19,6 +19,8 @@
 #   - exon_count
 #   - cds_exons
 #   - length.mutated.exon
+#   - threeUTR_length
+#   - PTC.2.end
 #
 # Features generated:
 #   - relativePTClocation
@@ -29,14 +31,25 @@
 #   - PTC_dist_exon_end_0b
 #   - PTC_dist_exon_start_1b
 #   - relPTC_exon
+#   - newUTR_length
+#   - log2newUTR
+#   - log2newUTR.cut
 #
 # Output:
 #   - PTC_geometry_features.rds
 #
 # The resulting feature table is keyed by `key` and is merged into the final
 # model feature matrix in 99_build_feature_matrix.R.
+#
+# Note:
+#   New 3'UTR length is calculated using the annotated 3'UTR length
+#   and the PTC-dependent downstream coding region:
+#
+#       newUTR_length = threeUTR_length + PTC.2.end
+#
+#   The log2-transformed new 3'UTR length is categorized using
+#   a cutoff of 10 (0-10 versus >10).
 # ==============================================================================
-
 
 # ------------------------------------------------------------------------------
 # 1. Required packages
@@ -322,7 +335,41 @@ geometry <- as.data.frame(
 
 
 # ------------------------------------------------------------------------------
-# 8. Add geometry features to variant table
+# 8. New 3'UTR length and log2 transformation
+# ------------------------------------------------------------------------------
+
+required_newutr <- c("threeUTR_length", "PTC.2.end")
+
+missing_newutr <- setdiff(required_newutr, names(variants))
+
+if (length(missing_newutr) > 0) {
+    stop(
+        "Missing columns for new 3'UTR calculation: ",
+        paste(missing_newutr, collapse = ", ")
+    )
+}
+
+variants <- variants %>%
+    mutate(
+        newUTR_length = threeUTR_length + PTC.2.end,
+
+        log2newUTR = if_else(
+            !is.na(newUTR_length) & newUTR_length > 0,
+            log2(newUTR_length),
+            NA_real_
+        ),
+
+        log2newUTR.cut = factor(
+            case_when(
+                is.na(log2newUTR) ~ NA_character_,
+                log2newUTR <= 10 ~ "0-10",
+                TRUE ~ ">10"
+            ),
+            levels = c("0-10", ">10")
+        )
+    )
+# ------------------------------------------------------------------------------
+# 9. Add geometry features to variant table
 # ------------------------------------------------------------------------------
 
 variants <- bind_cols(
@@ -332,7 +379,7 @@ variants <- bind_cols(
 
 
 # ------------------------------------------------------------------------------
-# 9. Quality-control checks
+# 10. Quality-control checks
 # ------------------------------------------------------------------------------
 
 # Relative position within CDS should generally be between 0 and 1.
@@ -388,7 +435,7 @@ if (length(invalid_exon_count) > 0) {
 
 
 # ------------------------------------------------------------------------------
-# 10. QC summary
+# 11. QC summary
 # ------------------------------------------------------------------------------
 
 message(
@@ -420,7 +467,7 @@ message(
 
 
 # ------------------------------------------------------------------------------
-# 11. Create feature-only output table
+# 12. Create feature-only output table
 # ------------------------------------------------------------------------------
 
 PTC_geometry_features <- variants %>%
@@ -441,12 +488,18 @@ PTC_geometry_features <- variants %>%
 
         PTC_dist_exon_start_1b,
 
-        relPTC_exon
+        relPTC_exon,
+        
+        newUTR_length,
+
+        log2newUTR,
+
+        log2newUTR.cut
     )
 
 
 # ------------------------------------------------------------------------------
-# 12. Save
+# 13. Save
 # ------------------------------------------------------------------------------
 
 saveRDS(
