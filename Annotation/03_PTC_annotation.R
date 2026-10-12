@@ -44,7 +44,8 @@
 #   - last.EJC
 #   - downstream
 #   - EJC.downstream
-#
+#   - EJC.downstream.cut
+# 
 # No allele-specific expression outcome or TOPMed-specific confounder
 # filtering is performed in this script.
 # ==============================================================================
