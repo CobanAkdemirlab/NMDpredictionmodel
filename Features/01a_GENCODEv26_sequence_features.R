@@ -629,6 +629,23 @@ cds_features$downstream_start <- vapply(
 )
 
 
+# ------------------------------------------------------------------------------
+# CDS length transformations (model-compatible names)
+# ------------------------------------------------------------------------------
+
+cds_features$cds_length <- as.integer(width(cds_seqs[cds_features$txnames]))
+cds_features$log2_CDS <- ifelse(
+    cds_features$cds_length > 0,
+    log2(cds_features$cds_length),
+    NA_real_
+)
+cds_features$cds_length.cut <- factor(
+    ifelse(is.na(cds_features$log2_CDS), NA_character_,
+           ifelse(cds_features$log2_CDS <= 10, "0-10", ">10")),
+    levels = c("0-10", ">10")
+)
+
+
 # ==============================================================================
 # 3'UTR features
 # ==============================================================================
@@ -652,6 +669,26 @@ threeutr_features$threeUTR_length <-
         get_sequence_length,
         integer(1)
     )
+
+
+# Model feature: candidate ATG-to-in-frame-stop pattern in 3'UTR.
+# Note: the historical name uses "uORF", but this is not a canonical 5'UTR uORF.
+threeutr_features$threeutrseqs.uORF <- vapply(
+    three_utr_seqs[threeutr_features$txnames],
+    has_uORF,
+    character(1)
+)
+
+threeutr_features$log2_3utr <- ifelse(
+    threeutr_features$threeUTR_length > 0,
+    log2(threeutr_features$threeUTR_length),
+    NA_real_
+)
+threeutr_features$threeUTR_length.cut <- factor(
+    ifelse(is.na(threeutr_features$log2_3utr), NA_character_,
+           ifelse(threeutr_features$log2_3utr <= 10, "0-10", ">10")),
+    levels = c("0-10", ">10")
+)
 
 
 # ------------------------------------------------------------------------------
@@ -751,6 +788,18 @@ fiveutr_features$fiveutr_length <-
         get_sequence_length,
         integer(1)
     )
+
+
+fiveutr_features$log2_5utr <- ifelse(
+    fiveutr_features$fiveutr_length > 0,
+    log2(fiveutr_features$fiveutr_length),
+    NA_real_
+)
+fiveutr_features$fiveUTR_length.cut <- factor(
+    ifelse(is.na(fiveutr_features$log2_5utr), NA_character_,
+           ifelse(fiveutr_features$log2_5utr <= 7, "0-7", ">7")),
+    levels = c("0-7", ">7")
+)
 
 
 # ------------------------------------------------------------------------------
@@ -1011,5 +1060,3 @@ message(
         gencode_v26_sequence_features
     ) - 1
 )
-
-  
