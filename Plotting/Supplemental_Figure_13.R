@@ -1,11 +1,28 @@
-# ══════════════════════════════════════════════════════════════════════════════
-# Supplemental Figure 13
-# LMNA saturation genome editing (Cortázar et al. 2025) vs TrunKitten (8-feature)
-#   Experimental NMD efficiency (norm_mean) by TrunKitten binary call:
-#   NMD-triggering vs NMD-escape (escape_pred_at_youden, threshold_used in data)
-# Input : SGE_LMNA_comparing_8trunkitten.Rdata  (object LMNA_validation_8f_84)
-# Output: LMNA_TrunKitten_binary.pdf / .png
-# ══════════════════════════════════════════════════════════════════════════════
+############################################################
+# Supplementary Figure S13
+#
+# TrunKitten predictions versus experimental NMD efficiency
+# in LMNA saturation genome editing (Cortazar et al., 2025)
+#
+# Panel A:
+#   Spearman correlation between TrunKitten-predicted NMD
+#   probability and experimental NMD efficiency.
+#
+# Panel B:
+#   Experimental NMD efficiency by TrunKitten binary
+#   prediction (NMD-triggering vs. NMD-escape).
+#
+# Model:
+#   Eight-feature TrunKitten
+#
+# Input:
+#   SGE_LMNA_comparing_8trunkitten.Rdata
+#   Object: LMNA_validation_8f_84
+#
+# Output:
+#   Supplementary_Figure_S13_LMNA.pdf
+#   Supplementary_Figure_S13_LMNA.png
+############################################################
 suppressPackageStartupMessages({
   library(data.table); library(ggplot2); library(ggbeeswarm)
 })
@@ -85,7 +102,19 @@ pB <- ggplot(d, aes(call, norm_mean)) +
   labs(x = sprintf("TrunKitten prediction (threshold = %.2f)", TAU), y = "Experimental NMD efficiency",
        fill = "LMNA exon", tag = "B") + th
 fig <- (pA | pB) + plot_layout(guides = "collect", widths = c(1.15, 1))
-ggsave("SupplementalFigure12_LMNA.pdf", fig, width = 12, height = 4.8, device = cairo_pdf)
-ggsave("SupplementalFigure12_LMNA.png", fig, width = 12, height = 4.8, dpi = 300)
-cat(sprintf("rho = %.3f, P = %.2g; Wilcoxon P = %.2g\n", ct$estimate, ct$p.value, wt$p.value))
 
+ggsave(
+  "Supplementary_Figure_S13_LMNA.pdf",
+  fig,
+  width = 12,
+  height = 4.8,
+  device = cairo_pdf
+)
+
+ggsave(
+  "Supplementary_Figure_S13_LMNA.png",
+  fig,
+  width = 12,
+  height = 4.8,
+  dpi = 300
+)
