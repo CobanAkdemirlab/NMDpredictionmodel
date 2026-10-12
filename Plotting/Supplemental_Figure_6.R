@@ -14,9 +14,9 @@
 #   Tests: pairwise Wilcoxon rank-sum (Low-Medium, Medium-High, Low-High)
 #   within each facet, Benjamini-Hochberg adjusted.
 #
-# Input : TOPMed_stopgain_September25_corrected_readyformodel.csv
+# Input : TOPMed_stopgain.csv
 # Filter: ALLELE.RAT >= 0.35  (same as Figures 3, 4, 6 and Supplemental Figure 2)
-# Output: SupplementalFigure4_revised.pdf / .png
+# Output: SupplementalFigure.pdf / .png
 # ══════════════════════════════════════════════════════════════════════════════
 
 library(tidyverse)
@@ -27,7 +27,7 @@ library(ggpubr)
 set.seed(42)
 
 # ── Config ───────────────────────────────────────────────────────────────────
-INPUT_CSV <- "TOPMed_stopgain_September25_corrected_readyformodel.csv"
+INPUT_CSV <- "TOPMed_stopgain.csv"
 AR_MIN    <- 0.35
 CDS_CUTS  <- c(1289, 2181)
 EXON_CUTS <- c(5, 10, 20)
@@ -67,24 +67,6 @@ if ("downstream" %in% names(df))
   df <- df %>% mutate(ejc = case_when(downstream == "upstream of last EJC"   ~ "Yes",
                                       downstream == "downstream of last EJC" ~ "No"))
 
-# ══════════════════════════════════════════════════════════════════════════════
-# RECOVER THE ORIGINAL METHOD
-#   The original (June) S4 had ~4,528 points in panel A (1,657 / 1,500 / 1,371
-#   per CDS group), i.e. one point per transcript AND location group: the facet
-#   totals of that unit match the original within 1-3%. The split into
-#   Low / Medium / High, however, differed by facet (e.g. >20 exons: original
-#   Low = 146 vs 203 with global quartiles, while 2-5 exons matched), which a
-#   single global cut-off cannot produce. So the cut-offs may have been computed
-#   WITHIN each facet (CDS-length group in A, exon-count group in C).
-#
-#   The script tries every combination of
-#     unit : tx (one point per transcript), tx_cat (per transcript x location
-#            group), tx_ejc_cat (per transcript x EJC status x location group)
-#     rule : fixed cut-offs | global quantiles | quantiles within each facet,
-#            as tertiles (1/3, 2/3) or quartile groups (25%, 75%)
-#   builds panels A and C separately (their facets differ), compares the counts
-#   with the original figure, and uses the closest combination (printed).
-#   Set UNIT_KEY / RULE_KEY to force a choice.
 # ══════════════════════════════════════════════════════════════════════════════
 UNIT_KEY <- "tx_cat"
 RULE_KEY <- "global_tertiles"
@@ -296,8 +278,8 @@ final <- (pA | pB) / (pC | pD) +
     theme = theme(plot.caption = element_text(size = FONT - 6, color = "grey45",
                                               face = "italic", hjust = 0.5)))
 
-ggsave("SupplementalFigure4_revised.pdf", final, width = 26, height = 15,
+ggsave("SupplementalFigure4.pdf", final, width = 26, height = 15,
        limitsize = FALSE)
-ggsave("SupplementalFigure4_revised.png", final, width = 26, height = 15,
+ggsave("SupplementalFigure4.png", final, width = 26, height = 15,
        dpi = 300, limitsize = FALSE)
-cat("\nSaved: SupplementalFigure4_revised.pdf / .png\n")
+cat("\nSaved: SupplementalFigure4.pdf / .png\n")
