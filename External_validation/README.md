@@ -138,6 +138,23 @@ The validation script generates the final comparison dataset, correlation statis
 Results are written to `output/validation/`, including the final validation dataset:
 
 `LMNA_SGE_validation_final.csv`
+## Supplementary Figure S13 — LMNA SGE Validation
+
+Supplementary Figure S13 evaluates the concordance between
+eight-feature TrunKitten predictions and experimentally measured
+NMD efficiency from the LMNA saturation genome editing dataset.
+
+- **Panel A:** Spearman correlation between predicted and experimental
+  NMD efficiency.
+- **Panel B:** Comparison of experimental NMD efficiency between
+  variants predicted to trigger or escape NMD.
+
+Figure-generation script:
+
+[04_LMNA_SGE_Supplementary_Figure_S13.R](04_LMNA_SGE_Supplementary_Figure_S13.R)
+
+The figure includes 84 SNV-compatible stop-gain variants passing
+experimental quality control.
 
 ## Reproducibility Notes
 
