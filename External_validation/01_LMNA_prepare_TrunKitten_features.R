@@ -1,76 +1,19 @@
 ############################################################
-# 01_LMNA_prepare_TrunKitten_features.R
+# LMNA SGE -> TrunKitten feature preparation
 #
 # Purpose:
-#   Prepare SNV-compatible stop-gain variants from the
-#   Cortazar et al. LMNA saturation genome editing dataset
-#   and reconstruct the non-conservation TrunKitten features.
-#
-# Inputs:
-#   1. Cortazar et al. LMNA PTC measurements
-#   2. GENCODE v26 GTF
-#   3. GRCh38 reference FASTA
-#   4. mRNA half-life PC1 table
-#   5. expression 
-#
-# Outputs:
-#   LMNA_Cortazar_TrunKitten_variants.csv
-#   lmna_snv_before_conservation.rds
+#   Convert Cortazar et al. codon-level LMNA PTC data into
+#   SNV-compatible stop-gain variants and reconstruct
+#   TrunKitten transcript features.
 ############################################################
 
-suppressPackageStartupMessages({
-  library(dplyr)
-  library(stringr)
-  library(rtracklayer)
-  library(GenomicRanges)
-  library(Rsamtools)
-  library(Biostrings)
-  library(readxl)
-})
-
-args <- commandArgs(trailingOnly = TRUE)
-
-if (length(args) != 6) {
-  stop(
-    paste0(
-      "Usage:\n",
-      "Rscript 01_LMNA_prepare_TrunKitten_features.R ",
-      "<PTC_FILE> <GENCODE_V26_GTF> <GRCh38_FASTA> ",
-      "<HALF_LIFE_PC1_XLSX> <OUTPUT_DIR>"
-    )
-  )
-}
-
-PTC_FILE      <- args[1]
-GTF_FILE      <- args[2]
-GENOME_FILE   <- args[3]
-HALF_LIFE_FILE <- args[4]
-EXPRESSION_FILE <- args[5]
-OUTPUT_DIR    <- args[6]
-
-dir.create(
-  OUTPUT_DIR,
-  recursive = TRUE,
-  showWarnings = FALSE
-)
-
-LMNA_TX <- "ENST00000368300.8"
-
-############################################################
-# 1. INPUT FILES
-############################################################
-
-PTC_FILE <- "/path/NMD_efficiency_values_PTC.txt"
-
-GTF_FILE <- "/path/gencode.v26.primary_assembly.annotation.gtf"
-
-GENOME_FILE <- "/path/GRCh38.primary_assembly.genome.fa"
-
-HALF_LIFE_FILE <- "/path/half_life_pc1.xlsx"
-
-# Transcript used for LMNA
-LMNA_TX <- "ENST00000368300.8"
-
+library(dplyr)
+library(stringr)
+library(rtracklayer)
+library(GenomicRanges)
+library(Rsamtools)
+library(Biostrings)
+library(readxl)
 
 ############################################################
 # 2. READ CORTAZAR PTC DATA
@@ -450,78 +393,9 @@ lmna <- lmna %>%
       LMNA_half_life_PC1
   )
 
+
 ############################################################
-# 15. ADD LMNA MEDIAN EXPRESSION
-############################################################
-
-expression <-
-  read.delim(
-    EXPRESSION_FILE,
-    skip = 2,
-    check.names = FALSE
-  )
-
-
-# Extract LMNA expression across all GTEx tissues
-LMNA_expression <-
-  expression %>%
-  filter(
-    Description == "LMNA"
-  )
-
-
-# Confirm one LMNA gene row was found
-stopifnot(
-  nrow(LMNA_expression) == 1
-)
-
-
-# GTEx tissue columns
-tissue_cols <-
-  setdiff(
-    colnames(LMNA_expression),
-    c(
-      "Name",
-      "Description"
-    )
-  )
-
-
-# Median expression across tissues
-LMNA_MedianExpression <-
-  median(
-    as.numeric(
-      LMNA_expression[
-        1,
-        tissue_cols
-      ]
-    ),
-    na.rm = TRUE
-  )
-
-
-LMNA_MedianExpression
-# Expected: 96.3178
-
-
-# Log2 transformation used by TrunKitten
-LMNA_MedianExpression_log2 <-
-  log2(
-    LMNA_MedianExpression + 1
-  )
-
-
-LMNA_MedianExpression_log2
-
-
-# Add to all LMNA variants
-lmna <- lmna %>%
-  mutate(
-    MedianExpression_log2 =
-      LMNA_MedianExpression_log2
-  )
-############################################################
-# 16. RECONSTRUCT NATIVE LMNA CODON
+# 15. RECONSTRUCT NATIVE LMNA CODON
 ############################################################
 
 lmna <- lmna %>%
@@ -545,7 +419,7 @@ lmna %>%
 
 
 ############################################################
-# 17. COUNT NUMBER OF NUCLEOTIDE CHANGES
+# 16. COUNT NUMBER OF NUCLEOTIDE CHANGES
 ############################################################
 
 count_diffs <- function(ref, alt) {
@@ -586,7 +460,7 @@ table(lmna$n_nt_changes)
 
 
 ############################################################
-# 18. KEEP TRUE SINGLE-NUCLEOTIDE STOP-GAIN VARIANTS
+# 17. KEEP TRUE SINGLE-NUCLEOTIDE STOP-GAIN VARIANTS
 ############################################################
 
 lmna_snv <- lmna %>%
@@ -600,7 +474,7 @@ nrow(lmna_snv)
 
 
 ############################################################
-# 19. IDENTIFY EXACT ALTERED BASE WITHIN CODON
+# 18. IDENTIFY EXACT ALTERED BASE WITHIN CODON
 ############################################################
 
 find_changed_base <- function(ref, alt) {
@@ -652,7 +526,7 @@ lmna_snv <- lmna_snv %>%
 
 
 ############################################################
-# 20. CONVERT CDS POSITION -> GENOMIC POSITION
+# 19. CONVERT CDS POSITION -> GENOMIC POSITION
 ############################################################
 
 coding_to_genomic <- function(cdna_pos) {
@@ -687,7 +561,7 @@ lmna_snv <- lmna_snv %>%
 
 
 ############################################################
-# 21. CREATE STANDARD VARIANT IDENTIFIERS
+# 20. CREATE STANDARD VARIANT IDENTIFIERS
 ############################################################
 
 lmna_snv <- lmna_snv %>%
@@ -708,7 +582,7 @@ lmna_snv <- lmna_snv %>%
 
 
 ############################################################
-# 22. QC: CONFIRM REF ALLELES AGAINST GRCh38
+# 21. QC: CONFIRM REF ALLELES AGAINST GRCh38
 ############################################################
 
 test_gr <- GRanges(
@@ -738,7 +612,7 @@ table(
 
 
 ############################################################
-# 23. EXPORT VARIANTS FOR CONSERVATION ANNOTATION
+# 22. EXPORT VARIANTS FOR CONSERVATION ANNOTATION
 ############################################################
 
 LMNA_Cortazar_TrunKitten_variants <-
@@ -757,21 +631,16 @@ LMNA_Cortazar_TrunKitten_variants <-
 
 write.csv(
   LMNA_Cortazar_TrunKitten_variants,
-  file.path(
-    OUTPUT_DIR,
-    "LMNA_Cortazar_TrunKitten_variants.csv"
-  ),
+  "/Users/iegab/Downloads/LMNA_Cortazar_TrunKitten_variants.csv",
   row.names = FALSE
 )
 
+
+############################################################
+# 23. SAVE INTERMEDIATE LMNA DATA
+############################################################
+
 saveRDS(
   lmna_snv,
-  file.path(
-    OUTPUT_DIR,
-    "lmna_snv_before_conservation.rds"
-  )
+  "/Users/iegab/Downloads/lmna_snv_before_conservation.rds"
 )
-
-close(genome)
-
-message("LMNA TrunKitten feature preparation complete.")
