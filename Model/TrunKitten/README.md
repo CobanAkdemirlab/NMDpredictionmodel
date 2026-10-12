@@ -7,7 +7,7 @@ pipeline is impractical.
 ## Layout
 
 - `config/config.yaml` — paths, CatBoost hyperparameters (TrunKitten's own), feature lists
-- `notebooks/04_reduced_model_top10_shap.ipynb` — selection of the feature set, training and evaluation of the reduced model
+- `notebooks/04_reduced_model_top8_shap.ipynb` — selection of the feature set, training and evaluation of the reduced model
 - `inputs/` — SHAP-rankings snapshot, half-life table, example variants, and download instructions for the large reference files (`inputs/README.md`)
 - `model/` — trained model artifacts
   - `trunkitten.cbm`, `trunkitten.pkl`
