@@ -233,6 +233,9 @@ def order_transcript_direction(features):
     )
 
     return feats
+def strip_tx_version(txid):
+    """Remove the version suffix from an Ensembl transcript ID."""
+    return str(txid).split(".")[0]
 
 
 # ==============================================================================
@@ -455,7 +458,8 @@ def prepare_gencode_db():
 def build_regions(
     genome,
     db,
-    row
+    row,
+    tx_lookup
 ):
     """
     Construct the seven sequence regions used for motif analysis.
@@ -519,11 +523,13 @@ def build_regions(
         mut_exon - 1
     ]
 
-    try:
-        tx = db[txid]
+    stable_txid = strip_tx_version(txid)
+    matched_txid = tx_lookup.get(stable_txid)
 
-    except Exception:
+    if matched_txid is None:
         return {}
+
+    tx = db[matched_txid]
 
     # --------------------------------------------------------------------------
     # CDS segments
@@ -974,7 +980,11 @@ def main():
     db = gffutils.FeatureDB(
         str(GTF_DB)
     )
-
+    # Match transcripts without Ensembl version numbers
+    tx_lookup = {
+        strip_tx_version(tx.id): tx.id
+        for tx in db.features_of_type("transcript")
+    }
     genome = Fasta(
         str(FASTA_FILE)
     )
@@ -999,10 +1009,11 @@ def main():
             )
 
         regions = build_regions(
-            genome,
-            db,
-            row
-        )
+        genome,
+        db,
+        row,
+        tx_lookup
+    )
 
         results.append(
             regions
