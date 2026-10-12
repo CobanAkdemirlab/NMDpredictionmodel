@@ -1,6 +1,6 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# NMD Supplemental Figure 4 — downstream-EJC effect across strata
-#   (rebuilt October 2026 for the corrected dataset; original script lost)
+#  Supplemental Figure 4 — downstream-EJC effect across strata
+# 
 #
 # Panels (2 x 2):
 #   A = Gene tolerance x EJC    (Highly intolerant | Highly tolerant)  transcript-level
@@ -18,9 +18,9 @@
 #
 #   Test: Wilcoxon rank-sum, No vs Yes within each stratum.
 #
-# Input : TOPMed_stopgain_September25_corrected_readyformodel.csv
+# Input : TOPMed_stopgainl.csv
 # Filter: ALLELE.RAT >= 0.35  (same as Figures 3, 4, 6 and Supplemental Figure 2)
-# Output: SupplementalFigure3_revised.pdf / .png
+# Output: SupplementalFigure3.pdf / .png
 # ══════════════════════════════════════════════════════════════════════════════
 
 library(tidyverse)
@@ -31,7 +31,7 @@ library(ggpubr)
 set.seed(42)
 
 # ── Config ───────────────────────────────────────────────────────────────────
-INPUT_CSV <- "TOPMed_stopgain_September25_corrected_readyformodel.csv"
+INPUT_CSV <- "TOPMed_stopgain.csv"
 AR_MIN    <- 0.35
 CDS_CUTS  <- c(1289, 2181)          # bp, as in Figure 4 / Supplemental Figure 2
 EXON_CUTS <- c(5, 10, 20)
@@ -226,8 +226,8 @@ pD <- make_panel(to_tx(df,  exon_grp), "Exon count x EJC",       "D", CAP_TX)
 
 final <- (pA | pB) / (pC | pD)
 
-ggsave("SupplementalFigure3_revised.pdf", final, width = 22, height = 15,
+ggsave("SupplementalFigure3.pdf", final, width = 22, height = 15,
        limitsize = FALSE)
-ggsave("SupplementalFigure3_revised.png", final, width = 22, height = 15,
+ggsave("SupplementalFigure3.png", final, width = 22, height = 15,
        dpi = 300, limitsize = FALSE)
-cat("\nSaved: SupplementalFigure3_revised.pdf / .png\n")
+cat("\nSaved: SupplementalFigure3.pdf / .png\n")
