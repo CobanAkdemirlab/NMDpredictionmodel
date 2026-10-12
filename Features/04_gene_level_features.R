@@ -42,7 +42,8 @@ CONFIG <- list(
     # GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.gz
     #
     # GTEx reports that these tissue-level median TPM values were calculated
-    # from GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct.gz.
+    # from GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct.gz
+    # or can be found under: Features/reference/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt
     
     gtex_expression_file =
         "/path/to/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.txt",
@@ -57,6 +58,7 @@ CONFIG <- list(
     #
     # File:
     # 13059_2022_2811_MOESM3_ESM.xlsx
+    # or can be found under /content/NMDpredictionmodel/Model/TrunKitten/inputs/half_life_pc1.xlsx 
     half_life_file =
         "/path/to/13059_2022_2811_MOESM3_ESM.xlsx",
     
