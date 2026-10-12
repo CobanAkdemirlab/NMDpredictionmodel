@@ -52,10 +52,10 @@ library(GenomicRanges)
 CONFIG <- list(
 # Source: https://www.gencodegenes.org/human/release_26.html
     gencode_gtf =
-        "/path/to/gencode.v26.primary_assembly.annotation.gtf.gz",
+        Sys.getenv("GENCODE_GTF", "/path/to/gencode.v26.primary_assembly.annotation.gtf.gz"),
 
     output_file =
-        "/path/to/gencode_v26_sequence_features.rds",
+        Sys.getenv("SEQUENCE_FEATURES_OUTPUT", "/path/to/gencode_v26_sequence_features.rds"),
 
     # The original analysis used autosomes chr1-chr22.
     chromosomes =
@@ -69,13 +69,13 @@ CONFIG <- list(
 
 genome <- BSgenome.Hsapiens.UCSC.hg38
 
-txdb <- makeTxDbFromGFF(
+txdb <- txdbmaker::makeTxDbFromGFF(
     CONFIG$gencode_gtf
 )
 
 txdb <- keepSeqlevels(
     txdb,
-    CONFIG$chromosomes,
+    intersect(CONFIG$chromosomes, GenomeInfoDb::seqlevels(txdb)),
     pruning.mode = "coarse"
 )
 
@@ -808,22 +808,22 @@ rename_fiveutr_window <- c(
         "fiveUTR_UCcontentfirst100",
 
     FiveUTR_AU_last200 =
-        "FiveUTR_AUcontentlast200",
+        "fiveUTR_AUcontentlast200",
 
     FiveUTR_GC_last200 =
-        "FiveUTR_GCcontentlast200",
+        "fiveUTR_GCcontentlast200",
 
     FiveUTR_UC_last200 =
-        "FiveUTR_UCcontentlast200",
+        "fiveUTR_UCcontentlast200",
 
     FiveUTR_AU_first200 =
-        "FiveUTR_AUcontentfirst200",
+        "fiveUTR_AUcontentfirst200",
 
     FiveUTR_GC_first200 =
-        "FiveUTR_GCcontentfirst200",
+        "fiveUTR_GCcontentfirst200",
 
     FiveUTR_UC_first200 =
-        "FiveUTR_UCcontentfirst200"
+        "fiveUTR_UCcontentfirst200"
 )
 
 for (
@@ -1012,5 +1012,4 @@ message(
     ) - 1
 )
 
-  
   
