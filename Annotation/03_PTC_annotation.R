@@ -766,10 +766,12 @@ variants <- variants %>%
 # 19. Number of downstream exon junctions
 #
 # Example:
+#   PTC in last coding exon        -> 0
+#   PTC in penultimate coding exon -> 1
+#   PTC two coding exons upstream  -> 2
 #
-#   PTC in last coding exon          -> 0
-#   PTC in penultimate coding exon   -> 1
-#   PTC two coding exons upstream    -> 2
+# Categories:
+#   0-2, 3-5, 6-9, 10-14, >14
 # ------------------------------------------------------------------------------
 
 variants <- variants %>%
@@ -782,19 +784,35 @@ variants <- variants %>%
                 NA_integer_,
 
             TRUE ~
-                as.integer(
-                    exon_count
-                ) -
-                as.integer(
-                    mut.exon
-                )
+                as.integer(exon_count) -
+                as.integer(mut.exon)
+        ),
+
+        EJC.downstream.cut = cut(
+            EJC.downstream,
+            breaks = c(-Inf, 2, 5, 9, 14, Inf),
+            labels = c(
+                "0-2",
+                "3-5",
+                "6-9",
+                "10-14",
+                ">14"
+            ),
+            right = TRUE
         )
     )
 
 
 # ------------------------------------------------------------------------------
-# 20. QC checks
+# 20. QC
 # ------------------------------------------------------------------------------
+
+table(
+    variants$EJC.downstream.cut,
+    useNA = "ifany"
+)
+
+summary(variants$EJC.downstream)
 
 if (
     any(
