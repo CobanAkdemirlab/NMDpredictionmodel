@@ -109,7 +109,7 @@ y_main <- scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.0),
 # LOAD & PREP — apply ALLELE.RAT > 0.35 filter, then collapse to transcript level
 # ══════════════════════════════════════════════════════════════════════════════
 cat("Loading data...\n")
-df_raw <- read.csv("TOPMed_stopgain_September25_corrected_readyformodel.csv",
+df_raw <- read.csv("TOPMed_stopgain.csv",
                    stringsAsFactors = FALSE)
 
 # (1) Apply ALLELE.RAT >= 0.35 filter to PTC-variants (v5: >=, was >)
