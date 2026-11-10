@@ -99,3 +99,7 @@ Model/TrunCat/results/ablation/response_figure_*.png
 Model/TrunCat/results/ablation/trunkitten_drop_no_replace_test.csv
 Model/TrunCat/results/ablation/trunkitten_redundancy_swap_test.csv
 Model/TrunCat/track/trackDb_local.txt
+TOPMed_*.csv
+topmed_*.tsv
+*cv_predictions*.csv
+*oof_predictions*.csv
